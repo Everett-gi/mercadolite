@@ -1,0 +1,17 @@
+# O repositório guarda tudo com LF (padrão do Linux), onde o projeto roda (Docker, CI,
+# servidor). Sem isto, arquivos criados no Windows entram com CRLF e podem quebrar scripts.
+* text=auto eol=lf
+
+# Scripts do Windows precisam de CRLF para rodar no próprio Windows.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binários: nunca converter.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
