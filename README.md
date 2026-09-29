@@ -2,7 +2,7 @@
 
 Marketplace com catálogo, carrinho, checkout Stripe (modo teste), pedidos e estoque — com o pagamento tratado como ponto crítico de segurança.
 
-> 🚧 **Em construção — fase 2 de 6 concluída (carrinho).** Parte do portfólio
+> 🚧 **Em construção — fases 1, 2 e 3a concluídas (catálogo, carrinho e login).** Parte do portfólio
 > [Projetos-e-ideias](https://github.com/Everett-gi/Projetos-e-ideias).
 
 ![Vitrine do MercadoLite](docs/tutorial/img/fase-1-vitrine-busca.png)
@@ -18,17 +18,22 @@ pedidos com status e controle de estoque.
 - **Fase 2:** carrinho na sessão (sem login), adicionado via Turbo Stream sem recarregar a
   página, com quantidade e estoque conferidos, preço sempre lido do banco e limpeza diária de
   carrinhos abandonados.
+- **Fase 3a:** conta de comprador (Devise) com confirmação de e-mail, "esqueci minha senha",
+  expiração por inatividade e exclusão da conta; o carrinho de visitante passa a ser da conta
+  no login.
 
 ## Stack
 
 Ruby 4.0.7 · Rails 8.1.4 · PostgreSQL 16 · Hotwire (Turbo + Stimulus) · Tailwind CSS ·
-Active Storage + libvips · RSpec + FactoryBot · RuboCop · Brakeman · bundler-audit.
-Nas próximas fases: **Stripe** (modo teste) · Devise · Pundit.
+Active Storage + libvips · Devise · Mailpit (e-mail em desenvolvimento) · RSpec + FactoryBot ·
+RuboCop · Brakeman · bundler-audit.
+Nas próximas fases: **Stripe** (modo teste) · Pundit.
 
 ## Modelos
 
 - ✅ **Vendor** · **Product** (vendedor, preço em centavos, até 5 imagens) · **Inventory** (1:1 com o produto)
-- ✅ **Cart** + **CartItem** (de 1 a 10 unidades por linha, sem coluna de preço)
+- ✅ **Cart** + **CartItem** (de 1 a 10 unidades por linha, sem coluna de preço; de visitante ou de uma conta)
+- ✅ **User** (e-mail confirmado, hash bcrypt da senha, data do aceite dos termos)
 - ⬜ **Order** (status: pending|paid|shipped) + **OrderItem**
 
 ## Segurança
@@ -43,6 +48,10 @@ Resumo das medidas (detalhes no [`SECURITY.md`](SECURITY.md)):
 - Sessão em cookie cifrado e autenticado (AES-256-GCM), `HttpOnly`, `SameSite=Lax`, `Secure` em produção.
 - Segredos só em variáveis de ambiente; CI bloqueante com Brakeman, bundler-audit e importmap audit; Dependabot.
 - O **preço nunca vem do navegador**: o carrinho usa sempre o preço do banco (com teste).
+- Login com **bcrypt** (senha de 15 a 72 bytes, sem senhas previsíveis), **modo paranoico** (nem a mensagem nem o tempo de resposta revelam quem tem conta) e **rate limit por IP e por e-mail**.
+- **"Sair" invalida todas as cópias do cookie de sessão** (um cookie copiado não volta a entrar); sessão expira com 2 horas sem uso.
+- Tokens de e-mail com validade curta, e **fora dos logs** (achado e corrigido nesta fase).
+- **LGPD:** coleta mínima, aceite dos termos, exclusão da conta pelo próprio usuário e limpeza de contas não confirmadas.
 - Próximas fases: **verificação de assinatura** dos webhooks do Stripe, **idempotência** no pagamento e autorização de pedidos (o comprador vê só os seus).
 
 ## Rodando localmente
@@ -52,7 +61,7 @@ Passo a passo completo (WSL 2 + Ubuntu no Windows 11) na
 
 ```bash
 cp .env.example .env            # e defina DATABASE_PASSWORD
-docker compose up -d            # PostgreSQL 16
+docker compose up -d            # PostgreSQL 16 e Mailpit (e-mails em http://localhost:8025)
 bundle install
 bin/rails db:prepare db:seed    # bancos, schema e dados de exemplo
 bin/dev                         # http://localhost:3000
@@ -72,7 +81,7 @@ bin/ci                # tudo de uma vez
 
 1. ✅ Catálogo (produtos + imagens + busca/filtros)
 2. ✅ Carrinho (sessão, CSRF, anti-IDOR, rate limit, Turbo Streams)
-3. ⬜ Login do comprador (Devise) + checkout com Stripe em modo teste (webhook assinado e idempotente)
+3. 🟡 Login do comprador (✅ 3a: Devise, e-mail confirmado, LGPD) + checkout com Stripe em modo teste (⬜ 3b: Pundit, webhook assinado e idempotente)
 4. ⬜ Pedidos + estoque (baixa no pagamento confirmado)
 5. ⬜ Painel do vendedor
 6. ⬜ Deploy (Docker Compose + Caddy, ver [`docs/DEPLOY.md`](docs/DEPLOY.md))
@@ -87,3 +96,4 @@ Cada fase concluída ganha uma lição em [`docs/tutorial/`](docs/tutorial/):
 | [01 — Ruby para quem vem do C/C++](docs/tutorial/01-ruby-para-quem-vem-do-c.md) | objetos, blocos, símbolos, mixins, exceções, Bundler |
 | [Fase 1 — Catálogo](docs/tutorial/fase-1-catalogo.md) | Rails, Active Record, migrations e restrições, SQL injection, XSS, CSP, Active Storage, RSpec, CI |
 | [Fase 2 — Carrinho](docs/tutorial/fase-2-carrinho.md) | cookies e sessão (AES-256-GCM), CSRF com ataque real, IDOR, rate limiting, Turbo Streams, concerns, jobs com Solid Queue |
+| [Fase 3a — Login](docs/tutorial/fase-3a-login.md) | hash de senha (bcrypt, sal, custo, 72 bytes), Devise e Warden, enumeração e ataques de tempo, revogação de sessão, rate limit por e-mail, e-mail com Mailpit, token no log, LGPD |

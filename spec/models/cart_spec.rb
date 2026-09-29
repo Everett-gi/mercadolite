@@ -74,4 +74,77 @@ RSpec.describe Cart do
       expect(described_class.abandoned).to contain_exactly(old)
     end
   end
+
+  describe ".guest" do
+    it "traz só carrinhos sem dono" do
+      guest = create(:cart)
+      create(:cart, user: create(:user))
+
+      expect(described_class.guest).to contain_exactly(guest)
+    end
+  end
+
+  it "o banco não deixa uma conta ter dois carrinhos" do
+    user = create(:user)
+    create(:cart, user:)
+
+    expect { described_class.create!(user:) }.to raise_error(ActiveRecord::RecordNotUnique)
+  end
+
+  describe ".claim" do
+    let(:user) { create(:user) }
+    let(:mug) { create(:product, stock: 20) }
+    let(:guest) { create(:cart).tap { |cart| cart.add(mug, 3) } }
+
+    it "sem carrinho de visitante, devolve o da conta (ou nil)" do
+      expect(described_class.claim(nil, user)).to be_nil
+    end
+
+    it "se a conta não tem carrinho, o de visitante passa a ser dela" do
+      claimed = described_class.claim(guest, user)
+
+      expect(claimed).to eq(guest)
+      expect(guest.reload.user).to eq(user)
+    end
+
+    it "se a conta já tem carrinho, soma os itens nele e apaga o de visitante" do
+      own = create(:cart, user:)
+      own.add(mug, 2)
+      teapot = create(:product, stock: 5)
+      guest.add(teapot, 1)
+
+      claimed = described_class.claim(guest, user)
+
+      expect(claimed).to eq(own)
+      expect(own.items.pluck(:product_id, :quantity)).to contain_exactly([ mug.id, 5 ], [ teapot.id, 1 ])
+      expect(described_class.exists?(guest.id)).to be(false)
+    end
+  end
+
+  describe "#merge_item" do
+    let(:cart) { create(:cart) }
+
+    it "limita a soma a #{CartItem::MAX_QUANTITY} unidades por linha" do
+      mug = create(:product, stock: 50)
+      cart.add(mug, 8)
+
+      expect(cart.merge_item(mug, 5)).to be(true)
+      expect(cart.items.sole.quantity).to eq(CartItem::MAX_QUANTITY)
+    end
+
+    it "limita a soma ao estoque atual" do
+      mug = create(:product, stock: 4)
+      cart.add(mug, 3)
+
+      cart.merge_item(mug, 3)
+
+      expect(cart.items.sole.quantity).to eq(4)
+    end
+
+    it "descarta produto fora de venda ou sem estoque" do
+      expect(cart.merge_item(create(:product, :inactive, stock: 5), 1)).to be(false)
+      expect(cart.merge_item(create(:product, stock: 0), 1)).to be(false)
+      expect(cart.items).to be_empty
+    end
+  end
 end

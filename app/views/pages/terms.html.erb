@@ -1,0 +1,39 @@
+<% content_for :title, "Termos de Uso" %>
+
+<article class="mx-auto max-w-2xl space-y-4 text-stone-800">
+  <h1 class="text-2xl font-bold tracking-tight">Termos de Uso</h1>
+  <p class="text-sm text-stone-500">Versão de 29 de setembro de 2026.</p>
+
+  <h2 class="pt-2 text-lg font-semibold">1. O que é o MercadoLite</h2>
+  <p>
+    O MercadoLite é uma <strong>loja de demonstração</strong>, feita como projeto de portfólio.
+    Nenhum produto é vendido, cobrado ou entregue de verdade.
+  </p>
+
+  <h2 class="pt-2 text-lg font-semibold">2. Pagamentos</h2>
+  <p>
+    Os pagamentos funcionam só em <strong>modo de teste</strong> do Stripe, com cartões de teste.
+    Nunca digite os dados de um cartão real.
+  </p>
+
+  <h2 class="pt-2 text-lg font-semibold">3. Sua conta</h2>
+  <ul class="list-disc space-y-1 pl-6">
+    <li>Use um e-mail que seja seu: a conta só é ativada depois da confirmação por e-mail.</li>
+    <li>Guarde a sua senha; nós nunca a pedimos por e-mail ou mensagem.</li>
+    <li>Você pode excluir a conta quando quiser, em "Minha conta".</li>
+  </ul>
+
+  <h2 class="pt-2 text-lg font-semibold">4. Uso aceitável</h2>
+  <p>
+    Não tente invadir, sobrecarregar ou atrapalhar o sistema. Falhas de segurança podem ser
+    relatadas de forma privada, como explica o arquivo SECURITY.md do repositório.
+  </p>
+
+  <h2 class="pt-2 text-lg font-semibold">5. Sem garantias</h2>
+  <p>
+    Por ser uma demonstração, o serviço pode sair do ar ou ter os dados apagados a qualquer
+    momento, sem aviso.
+  </p>
+
+  <p>O tratamento dos seus dados está descrito na <%= link_to "Política de Privacidade", privacy_path, class: "text-emerald-700 underline" %>.</p>
+</article>

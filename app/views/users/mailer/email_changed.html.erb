@@ -1,0 +1,9 @@
+<p>Olá!</p>
+
+<% if @resource.try(:unconfirmed_email?) %>
+  <p>O e-mail da sua conta no MercadoLite está sendo trocado para <strong><%= @resource.unconfirmed_email %></strong>.</p>
+<% else %>
+  <p>O e-mail da sua conta no MercadoLite foi trocado para <strong><%= @resource.email %></strong>.</p>
+<% end %>
+
+<p>Se não foi você, redefina a sua senha agora pelo link "Esqueci minha senha" da tela de login.</p>

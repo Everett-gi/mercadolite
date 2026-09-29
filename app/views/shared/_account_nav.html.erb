@@ -1,0 +1,12 @@
+<%# Links de conta no cabeçalho. "Sair" é um botão (formulário DELETE com token CSRF), e não
+    um link: um GET que desloga poderia ser disparado por qualquer site, com uma <img>. %>
+<nav class="flex items-center gap-1 text-sm font-medium" aria-label="Conta">
+  <% if user_signed_in? %>
+    <%= link_to "Minha conta", edit_user_registration_path, class: "rounded-md px-3 py-2 text-stone-700 hover:bg-stone-100" %>
+    <%= button_to "Sair", destroy_user_session_path, method: :delete,
+          class: "rounded-md px-3 py-2 text-stone-700 hover:bg-stone-100" %>
+  <% else %>
+    <%= link_to "Entrar", new_user_session_path, class: "rounded-md px-3 py-2 text-stone-700 hover:bg-stone-100" %>
+    <%= link_to "Criar conta", new_user_registration_path, class: "rounded-md bg-emerald-700 px-3 py-2 text-white hover:bg-emerald-800" %>
+  <% end %>
+</nav>

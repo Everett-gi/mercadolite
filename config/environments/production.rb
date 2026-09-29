@@ -53,21 +53,20 @@ Rails.application.configure do
   config.active_job.queue_adapter = :solid_queue
   config.solid_queue.connects_to = { database: { writing: :queue } }
 
-  # Ignore bad email addresses and do not raise email delivery errors.
-  # Set this to true and configure the email server for immediate delivery to raise delivery errors.
-  # config.action_mailer.raise_delivery_errors = false
-
-  # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: "example.com" }
-
-  # Specify outgoing SMTP server. Remember to add smtp/* credentials via bin/rails credentials:edit.
-  # config.action_mailer.smtp_settings = {
-  #   user_name: Rails.application.credentials.dig(:smtp, :user_name),
-  #   password: Rails.application.credentials.dig(:smtp, :password),
-  #   address: "smtp.example.com",
-  #   port: 587,
-  #   authentication: :plain
-  # }
+  # E-mails (confirmação de conta, redefinição de senha). Tudo vem de variáveis de ambiente
+  # (veja .env.example); os valores padrão só existem para o "assets:precompile" do
+  # Dockerfile, que carrega este arquivo sem as variáveis reais.
+  # O host dos links é FIXO: nunca derivado do cabeçalho Host da requisição.
+  config.action_mailer.default_url_options = { host: ENV.fetch("APP_HOST", "localhost"), protocol: "https" }
+  config.action_mailer.smtp_settings = {
+    address: ENV.fetch("SMTP_ADDRESS", "localhost"),
+    port: ENV.fetch("SMTP_PORT", "587").to_i,
+    user_name: ENV["SMTP_USERNAME"],
+    password: ENV["SMTP_PASSWORD"],
+    authentication: :plain,
+    # Exige TLS até o provedor: a senha do SMTP e os links com token não trafegam abertos.
+    enable_starttls: true
+  }
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).

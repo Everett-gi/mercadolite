@@ -1,0 +1,19 @@
+<% content_for :title, "Reenviar confirmação" %>
+
+<div class="mx-auto max-w-md">
+  <h1 class="mb-6 text-2xl font-bold tracking-tight">Reenviar e-mail de confirmação</h1>
+
+  <%= form_with model: resource, scope: resource_name, url: confirmation_path(resource_name), class: "card space-y-4" do |f| %>
+    <%= render "users/shared/error_messages", resource: %>
+
+    <div>
+      <%= f.label :email, "E-mail da conta", class: "form-label" %>
+      <%= f.email_field :email, autofocus: true, autocomplete: "email", required: true, class: "form-input",
+            value: (resource.pending_reconfirmation? ? resource.unconfirmed_email : resource.email) %>
+    </div>
+
+    <%= f.submit "Reenviar", class: "btn-primary w-full" %>
+  <% end %>
+
+  <%= render "users/shared/links" %>
+</div>

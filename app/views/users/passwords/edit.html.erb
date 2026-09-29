@@ -1,0 +1,27 @@
+<% content_for :title, "Nova senha" %>
+
+<div class="mx-auto max-w-md">
+  <h1 class="mb-6 text-2xl font-bold tracking-tight">Escolha uma nova senha</h1>
+
+  <%= form_with model: resource, scope: resource_name, url: password_path(resource_name), method: :put, class: "card space-y-4" do |f| %>
+    <%= render "users/shared/error_messages", resource: %>
+    <%# O token do link do e-mail volta ao servidor neste campo oculto. %>
+    <%= f.hidden_field :reset_password_token %>
+
+    <div>
+      <%= f.label :password, "Nova senha", class: "form-label" %>
+      <%= f.password_field :password, autofocus: true, autocomplete: "new-password", required: true,
+            minlength: @minimum_password_length, class: "form-input" %>
+      <p class="form-hint">No mínimo <%= @minimum_password_length %> caracteres.</p>
+    </div>
+
+    <div>
+      <%= f.label :password_confirmation, "Confirme a nova senha", class: "form-label" %>
+      <%= f.password_field :password_confirmation, autocomplete: "new-password", required: true, class: "form-input" %>
+    </div>
+
+    <%= f.submit "Trocar senha", class: "btn-primary w-full" %>
+  <% end %>
+
+  <%= render "users/shared/links" %>
+</div>

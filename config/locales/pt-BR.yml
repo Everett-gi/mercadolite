@@ -18,6 +18,9 @@ pt-BR:
       cart_item:
         one: Item do carrinho
         other: Itens do carrinho
+      user:
+        one: Conta
+        other: Contas
     attributes:
       vendor:
         name: Nome
@@ -35,6 +38,12 @@ pt-BR:
       cart_item:
         quantity: Quantidade
         product: Produto
+      user:
+        email: E-mail
+        password: Senha
+        password_confirmation: Confirmação da senha
+        current_password: Senha atual
+        terms_of_service: Os Termos de Uso e a Política de Privacidade
     errors:
       models:
         product:
@@ -51,6 +60,18 @@ pt-BR:
               exceeds_stock:
                 one: "maior que o estoque (só resta %{count} unidade)"
                 other: "maior que o estoque (só restam %{count} unidades)"
+        user:
+          attributes:
+            password:
+              # A rails-i18n diz "é muito curto"; "senha" é feminino.
+              too_short: "é muito curta (mínimo: %{count} caracteres)"
+              too_long: "é muito longa (máximo: %{count} caracteres)"
+              too_many_bytes: "é longa demais: use até %{count} bytes (letras com acento contam 2)"
+              predictable_repetitive: "é repetitiva demais: use mais caracteres diferentes"
+              predictable_service_name: "não pode conter o nome da loja"
+              predictable_email: "não pode conter o seu e-mail"
+            terms_of_service:
+              accepted: "precisam ser aceitos"
 
   activemodel:
     attributes:
@@ -83,6 +104,10 @@ pt-BR:
       invalid_quantity: "Escolha uma quantidade de 1 a %{max}."
     destroy:
       removed: "Produto removido do carrinho."
+  users:
+    registrations:
+      destroy:
+        wrong_password: "Senha incorreta. A conta não foi excluída."
 
   # Textos de views (t(".chave") num partial procura em pasta.partial.chave).
   carts:
@@ -90,3 +115,8 @@ pt-BR:
       stock_left:
         one: "Só resta 1 unidade em estoque. Ajuste a quantidade."
         other: "Só restam %{count} unidades em estoque. Ajuste a quantidade."
+
+  # Mensagens do Devise que trocamos (as demais vêm da gem devise-i18n).
+  devise:
+    registrations:
+      destroyed: "Sua conta foi excluída, junto com o seu e-mail, a sua senha e o seu carrinho."

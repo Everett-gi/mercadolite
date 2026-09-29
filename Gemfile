@@ -46,6 +46,12 @@ gem "ruby-vips", "~> 2.3", require: false
 # Traduções prontas do Rails para pt-BR: mensagens de validação, datas, moeda.
 gem "rails-i18n", "~> 8.1"
 
+# Autenticação (login do comprador): cadastro, confirmação de e-mail, recuperação de senha.
+# Guarda só o hash bcrypt da senha e é construída sobre o Warden (um middleware Rack).
+gem "devise", "~> 5.0"
+# Traduções do Devise (mensagens e telas) para pt-BR.
+gem "devise-i18n", "~> 1.16"
+
 group :development, :test do
   # Depurador (breakpoints com "debugger" no código).
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"

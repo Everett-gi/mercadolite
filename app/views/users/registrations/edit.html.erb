@@ -1,0 +1,58 @@
+<% content_for :title, "Minha conta" %>
+
+<div class="mx-auto max-w-md space-y-8">
+  <h1 class="text-2xl font-bold tracking-tight">Minha conta</h1>
+
+  <%= form_with model: resource, scope: resource_name, url: registration_path(resource_name), class: "card space-y-4" do |f| %>
+    <%= render "users/shared/error_messages", resource: %>
+
+    <div>
+      <%= f.label :email, "E-mail", class: "form-label" %>
+      <%= f.email_field :email, autocomplete: "email", required: true, class: "form-input" %>
+      <% if resource.pending_reconfirmation? %>
+        <p class="form-hint">
+          Aguardando a confirmação de <strong><%= resource.unconfirmed_email %></strong>.
+          Até lá, vale o e-mail atual.
+        </p>
+      <% end %>
+    </div>
+
+    <div>
+      <%= f.label :password, "Nova senha", class: "form-label" %>
+      <%= f.password_field :password, autocomplete: "new-password", minlength: @minimum_password_length, class: "form-input" %>
+      <p class="form-hint">Deixe em branco para manter a atual. Mínimo de <%= @minimum_password_length %> caracteres.</p>
+    </div>
+
+    <div>
+      <%= f.label :password_confirmation, "Confirme a nova senha", class: "form-label" %>
+      <%= f.password_field :password_confirmation, autocomplete: "new-password", class: "form-input" %>
+    </div>
+
+    <div>
+      <%= f.label :current_password, "Senha atual", class: "form-label" %>
+      <%= f.password_field :current_password, autocomplete: "current-password", required: true, class: "form-input" %>
+      <p class="form-hint">Necessária para confirmar qualquer alteração.</p>
+    </div>
+
+    <%= f.submit "Salvar alterações", class: "btn-primary w-full" %>
+  <% end %>
+
+  <%# Excluir a conta (LGPD). Pede a senha: com uma sessão esquecida aberta num computador
+      compartilhado, outra pessoa não consegue apagar a conta. O data-turbo-confirm abre a
+      caixa "Tem certeza?" do navegador antes de enviar. %>
+  <section class="card space-y-4 border-red-200">
+    <h2 class="text-lg font-semibold text-red-800">Excluir minha conta</h2>
+    <p class="text-sm text-stone-700">
+      Apaga o seu e-mail, a sua senha e o seu carrinho. Não dá para desfazer.
+    </p>
+    <%= form_with scope: resource_name, url: registration_path(resource_name), method: :delete,
+          data: { turbo_confirm: "Excluir a conta de vez? Isto não pode ser desfeito." }, class: "space-y-4" do |f| %>
+      <div>
+        <%= f.label :current_password, "Senha atual", for: "delete_current_password", class: "form-label" %>
+        <%= f.password_field :current_password, id: "delete_current_password", autocomplete: "current-password",
+              required: true, class: "form-input" %>
+      </div>
+      <%= f.submit "Excluir minha conta", class: "btn-danger w-full" %>
+    <% end %>
+  </section>
+</div>

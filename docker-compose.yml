@@ -1,6 +1,6 @@
-# Serviços de DESENVOLVIMENTO: só o PostgreSQL. A aplicação roda direto no WSL
-# (bin/dev), para você ver e depurar tudo; em produção, ela vai para um container
-# (Dockerfile + docker-compose.prod.yml, na fase de deploy).
+# Serviços de DESENVOLVIMENTO: o PostgreSQL e o Mailpit (e-mails de teste). A aplicação roda
+# direto no WSL (bin/dev), para você ver e depurar tudo; em produção, ela vai para um
+# container (Dockerfile + docker-compose.prod.yml, na fase de deploy).
 #
 # Subir:   docker compose up -d        Parar:   docker compose down
 # Os dados ficam no volume "pgdata" e sobrevivem ao "down" (apague com "down -v").
@@ -21,6 +21,15 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # Mailpit: recebe TODOS os e-mails que a aplicação envia em desenvolvimento (confirmação de
+  # conta, redefinição de senha) e os mostra em http://localhost:8025. Nenhum sai para a
+  # internet, então dá para testar com qualquer endereço, até inventado.
+  mail:
+    image: axllent/mailpit:v1
+    ports:
+      - "127.0.0.1:1025:1025" # SMTP (a aplicação envia para cá)
+      - "127.0.0.1:8025:8025" # página web para ler os e-mails
 
 volumes:
   pgdata:
