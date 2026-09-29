@@ -1,0 +1,15 @@
+<%# Links entre as telas de conta; cada tela omite o link para si mesma. %>
+<ul class="mt-6 space-y-2 text-sm">
+  <% unless controller_name == "sessions" %>
+    <li><%= link_to "Já tenho conta: entrar", new_session_path(resource_name), class: "text-emerald-700 hover:underline" %></li>
+  <% end %>
+  <% unless controller_name == "registrations" %>
+    <li><%= link_to "Criar uma conta", new_registration_path(resource_name), class: "text-emerald-700 hover:underline" %></li>
+  <% end %>
+  <% unless controller_name.in?(%w[passwords registrations]) %>
+    <li><%= link_to "Esqueci minha senha", new_password_path(resource_name), class: "text-emerald-700 hover:underline" %></li>
+  <% end %>
+  <% unless controller_name == "confirmations" %>
+    <li><%= link_to "Não recebi o e-mail de confirmação", new_confirmation_path(resource_name), class: "text-emerald-700 hover:underline" %></li>
+  <% end %>
+</ul>

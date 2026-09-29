@@ -1,0 +1,19 @@
+<% content_for :title, "Esqueci minha senha" %>
+
+<div class="mx-auto max-w-md">
+  <h1 class="mb-6 text-2xl font-bold tracking-tight">Esqueci minha senha</h1>
+
+  <%= form_with model: resource, scope: resource_name, url: password_path(resource_name), class: "card space-y-4" do |f| %>
+    <%= render "users/shared/error_messages", resource: %>
+
+    <div>
+      <%= f.label :email, "E-mail da conta", class: "form-label" %>
+      <%= f.email_field :email, autofocus: true, autocomplete: "email", required: true, class: "form-input" %>
+      <p class="form-hint">Se houver uma conta com este e-mail, enviaremos um link que vale por 1 hora.</p>
+    </div>
+
+    <%= f.submit "Enviar link", class: "btn-primary w-full" %>
+  <% end %>
+
+  <%= render "users/shared/links" %>
+</div>

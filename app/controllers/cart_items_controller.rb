@@ -3,7 +3,7 @@
 # Segurança:
 # - CSRF: todas são POST/PATCH/DELETE, e o Rails exige o token do formulário.
 # - Rate limit: no máximo RATE_LIMIT alterações por minuto por IP; acima disso, 429.
-# - Anti-IDOR: um item só é encontrado DENTRO do carrinho desta sessão.
+# - Anti-IDOR: um item só é encontrado DENTRO do carrinho atual (o da conta ou o da sessão).
 # - Preço: o navegador envia só produto e quantidade; o preço vem sempre do banco.
 class CartItemsController < ApplicationController
   RATE_LIMIT = 30
@@ -47,7 +47,7 @@ class CartItemsController < ApplicationController
 
   private
 
-  # Anti-IDOR: procura o item só entre os do carrinho desta sessão. O id de um item de
+  # Anti-IDOR: procura o item só entre os do carrinho atual. O id de um item de
   # outra pessoa (ou de um item que não existe) dá o mesmo 404, sem revelar nada.
   #
   # @return [CartItem]

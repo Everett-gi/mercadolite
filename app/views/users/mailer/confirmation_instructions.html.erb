@@ -1,0 +1,7 @@
+<p>Olá!</p>
+
+<p>Recebemos um pedido para usar <strong><%= @email %></strong> numa conta do MercadoLite. Para confirmar, clique no link abaixo (ele vale por 3 dias):</p>
+
+<p><%= link_to "Confirmar meu e-mail", confirmation_url(@resource, confirmation_token: @token) %></p>
+
+<p>Se não foi você, ignore esta mensagem: sem a confirmação, a conta não é ativada.</p>

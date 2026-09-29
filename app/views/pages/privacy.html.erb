@@ -1,0 +1,79 @@
+<% content_for :title, "Política de Privacidade" %>
+
+<article class="mx-auto max-w-2xl space-y-4 text-stone-800">
+  <h1 class="text-2xl font-bold tracking-tight">Política de Privacidade</h1>
+  <p class="text-sm text-stone-500">Versão de 29 de setembro de 2026.</p>
+
+  <p>
+    Esta política explica quais dados pessoais o MercadoLite trata, para quê e por quanto
+    tempo, conforme a Lei Geral de Proteção de Dados (LGPD, Lei nº 13.709/2018).
+  </p>
+
+  <h2 class="pt-2 text-lg font-semibold">1. Quais dados, para quê e por quanto tempo</h2>
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm">
+      <thead class="border-b border-stone-300">
+        <tr><th class="py-2 pr-4">Dado</th><th class="py-2 pr-4">Para quê</th><th class="py-2">Por quanto tempo</th></tr>
+      </thead>
+      <tbody class="divide-y divide-stone-200 align-top">
+        <tr>
+          <td class="py-2 pr-4">E-mail</td>
+          <td class="py-2 pr-4">Identificar a sua conta e enviar confirmação e redefinição de senha.</td>
+          <td class="py-2">Até você excluir a conta. Conta nunca confirmada: apagada em 7 dias.</td>
+        </tr>
+        <tr>
+          <td class="py-2 pr-4">Senha</td>
+          <td class="py-2 pr-4">Entrar na conta. Guardamos só um <em>hash</em> (bcrypt): nem nós conseguimos ler a senha.</td>
+          <td class="py-2">Até você excluir a conta.</td>
+        </tr>
+        <tr>
+          <td class="py-2 pr-4">Itens do carrinho</td>
+          <td class="py-2 pr-4">Manter o seu carrinho entre visitas.</td>
+          <td class="py-2">Apagado após 30 dias sem uso, ou junto com a conta.</td>
+        </tr>
+        <tr>
+          <td class="py-2 pr-4">Endereço IP</td>
+          <td class="py-2 pr-4">Segurança: limitar tentativas repetidas (login, cadastro) e diagnosticar falhas nos registros técnicos (logs).</td>
+          <td class="py-2">Contadores de tentativas: minutos. Logs: o tempo necessário para segurança e diagnóstico.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    Não pedimos nome, CPF, telefone nem endereço. Não guardamos o histórico de IPs de login.
+  </p>
+
+  <h2 class="pt-2 text-lg font-semibold">2. Bases legais</h2>
+  <p>
+    A conta e o carrinho existem para prestar o serviço que você pediu (execução de contrato,
+    art. 7º, V). Os limites de tentativas e os logs protegem você e a loja (legítimo interesse,
+    art. 7º, IX).
+  </p>
+
+  <h2 class="pt-2 text-lg font-semibold">3. Cookies</h2>
+  <p>
+    Usamos um único cookie, <strong>estritamente necessário</strong>: o da sessão, que guarda
+    o carrinho, o login e um código contra ataques CSRF. Ele é cifrado e o JavaScript da
+    página não consegue lê-lo. Não usamos cookies de publicidade nem de análise.
+  </p>
+
+  <h2 class="pt-2 text-lg font-semibold">4. Com quem compartilhamos</h2>
+  <ul class="list-disc space-y-1 pl-6">
+    <li>O provedor de e-mail, só para entregar as mensagens da conta.</li>
+    <li>O Stripe, quando o pagamento estiver disponível: os dados do cartão vão direto para ele e nunca passam pelos nossos servidores.</li>
+  </ul>
+  <p>Não vendemos nem cedemos dados a mais ninguém.</p>
+
+  <h2 class="pt-2 text-lg font-semibold">5. Seus direitos</h2>
+  <p>
+    A LGPD (art. 18) garante, entre outros, o acesso, a correção e a eliminação dos seus
+    dados. Em "Minha conta" você corrige o e-mail e <strong>exclui a conta</strong> por
+    conta própria: o e-mail, o hash da senha e o carrinho são apagados na hora.
+  </p>
+
+  <h2 class="pt-2 text-lg font-semibold">6. Contato</h2>
+  <p>
+    Dúvidas sobre esta política: pelo perfil do autor no GitHub
+    (<%= link_to "github.com/Everett-gi", "https://github.com/Everett-gi", class: "text-emerald-700 underline" %>).
+  </p>
+</article>

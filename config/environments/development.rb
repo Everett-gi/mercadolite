@@ -31,8 +31,12 @@ Rails.application.configure do
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :local
 
-  # Don't care if the mailer can't send.
-  config.action_mailer.raise_delivery_errors = false
+  # E-mails vão para o Mailpit (docker-compose.yml): um servidor SMTP de mentira que guarda
+  # tudo e mostra numa página, em http://localhost:8025. Nada sai para a internet.
+  config.action_mailer.delivery_method = :smtp
+  config.action_mailer.smtp_settings = { address: "localhost", port: 1025 }
+  # Se o Mailpit não estiver no ar, o erro aparece no log (em vez de sumir em silêncio).
+  config.action_mailer.raise_delivery_errors = true
 
   # Make template changes take effect immediately.
   config.action_mailer.perform_caching = false

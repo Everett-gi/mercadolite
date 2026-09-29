@@ -1,5 +1,9 @@
-# Carrinho de compras. Nesta fase ele é anônimo: a sessão do navegador guarda o id dele
-# (veja o concern CurrentCart). Na fase 3, o carrinho passa a ter um dono.
+# Carrinho de compras. Tem dois estados (veja o concern CurrentCart):
+#
+# - de visitante: user_id nulo; a sessão do navegador guarda o id dele;
+# - de usuário: pertence a uma conta (no máximo um por conta) e é achado por ela.
+#
+# No login, o carrinho de visitante é "reivindicado" pela conta (Cart.claim).
 class Cart < ApplicationRecord
   # Carrinho sem nenhuma alteração há mais que isso é apagado pelo PurgeAbandonedCartsJob.
   ABANDONED_AFTER = 30.days
@@ -7,9 +11,41 @@ class Cart < ApplicationRecord
   # class_name: o nome da associação (items) é diferente do nome da classe (CartItem).
   # dependent: :delete_all — um DELETE só para os itens (o banco também tem ON DELETE CASCADE).
   has_many :items, class_name: "CartItem", dependent: :delete_all
+  # optional: true — carrinho de visitante não tem dono.
+  belongs_to :user, optional: true
 
   # Range sem início (...data): "updated_at < data", ou seja, parados antes da data.
   scope :abandoned, -> { where(updated_at: ...ABANDONED_AFTER.ago) }
+  # Só carrinhos sem dono. A sessão de um visitante só pode apontar para um destes.
+  scope :guest, -> { where(user_id: nil) }
+
+  # Entrega o carrinho de visitante a quem acabou de entrar. Se a conta ainda não tem
+  # carrinho, este passa a ser dela. Se já tem, os itens são somados ao dela e este é apagado.
+  #
+  # @param guest_cart [Cart, nil] o carrinho de visitante da sessão, se houver
+  # @param user [User]
+  # @param retried [Boolean] uso interno: se esta chamada já é a nova tentativa
+  # @return [Cart, nil] o carrinho da conta, se ela tiver um
+  def self.claim(guest_cart, user, retried: false)
+    return user.cart if guest_cart.nil?
+
+    transaction do
+      if (own = user.cart)
+        guest_cart.items.includes(:product).each { |item| own.merge_item(item.product, item.quantity) }
+        guest_cart.destroy!
+        own
+      else
+        guest_cart.update!(user:)
+        guest_cart
+      end
+    end
+  rescue ActiveRecord::RecordNotUnique
+    # Dois logins da mesma conta ao mesmo tempo: o outro deu um carrinho à conta primeiro
+    # (o índice único de carts.user_id barrou este). Na nova tentativa, os itens são somados.
+    raise if retried
+
+    claim(guest_cart.reload, user.reload, retried: true)
+  end
 
   # Acrescenta unidades de um produto. Se ele já está no carrinho, SOMA à linha existente.
   #
@@ -28,6 +64,20 @@ class Cart < ApplicationRecord
     raise if retried
 
     add(product, quantity, retried: true)
+  end
+
+  # Soma unidades vindas de outro carrinho, limitando ao máximo por linha e ao estoque atual.
+  # Produto fora de venda não entra (a validação do CartItem recusa e o item é descartado).
+  #
+  # @param product [Product]
+  # @param quantity [Integer]
+  # @return [Boolean] se a linha foi gravada
+  def merge_item(product, quantity)
+    # CartItem direto, pelo cart_id (e não items.find_or_initialize_by): uma linha recusada
+    # não fica pendurada, sem salvar, na lista de itens deste objeto em memória.
+    item = CartItem.find_or_initialize_by(cart_id: id, product:)
+    item.quantity = [ item.quantity.to_i + quantity, CartItem::MAX_QUANTITY, product.stock_quantity ].min
+    item.quantity.positive? && item.save
   end
 
   # As linhas com tudo o que a tela precisa carregado de uma vez (sem N+1), na ordem em que
