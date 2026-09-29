@@ -2,7 +2,7 @@
 
 Marketplace com catálogo, carrinho, checkout Stripe (modo teste), pedidos e estoque — com o pagamento tratado como ponto crítico de segurança.
 
-> 🚧 **Em construção — fase 1 de 6 concluída (catálogo).** Parte do portfólio
+> 🚧 **Em construção — fase 2 de 6 concluída (carrinho).** Parte do portfólio
 > [Projetos-e-ideias](https://github.com/Everett-gi/Projetos-e-ideias).
 
 ![Vitrine do MercadoLite](docs/tutorial/img/fase-1-vitrine-busca.png)
@@ -12,8 +12,12 @@ Marketplace com catálogo, carrinho, checkout Stripe (modo teste), pedidos e est
 Loja/marketplace com produtos, carrinho, **checkout via Stripe (modo teste, gratuito)**,
 pedidos com status e controle de estoque.
 
-**Já funciona (fase 1):** vitrine com busca sem acento, filtros (vendedor, faixa de preço,
-em estoque), ordenação e paginação; página de produto com imagens (Active Storage) e estoque.
+**Já funciona:**
+- **Fase 1:** vitrine com busca sem acento, filtros (vendedor, faixa de preço, em estoque),
+  ordenação e paginação; página de produto com imagens (Active Storage) e estoque.
+- **Fase 2:** carrinho na sessão (sem login), adicionado via Turbo Stream sem recarregar a
+  página, com quantidade e estoque conferidos, preço sempre lido do banco e limpeza diária de
+  carrinhos abandonados.
 
 ## Stack
 
@@ -24,7 +28,8 @@ Nas próximas fases: **Stripe** (modo teste) · Devise · Pundit.
 ## Modelos
 
 - ✅ **Vendor** · **Product** (vendedor, preço em centavos, até 5 imagens) · **Inventory** (1:1 com o produto)
-- ⬜ **Cart** + **CartItem** · **Order** (status: pending|paid|shipped) + **OrderItem**
+- ✅ **Cart** + **CartItem** (de 1 a 10 unidades por linha, sem coluna de preço)
+- ⬜ **Order** (status: pending|paid|shipped) + **OrderItem**
 
 ## Segurança
 
@@ -34,8 +39,11 @@ Resumo das medidas (detalhes no [`SECURITY.md`](SECURITY.md)):
 - Busca sem SQL injection (placeholders, `sanitize_sql_like`, ordenação por *allowlist*) — com teste.
 - Escape de HTML em todas as views + **CSP com nonce** por requisição — um script injetado é bloqueado (verificado no navegador).
 - Uploads restritos a JPEG/PNG/WebP (SVG recusado), com limites de tamanho e quantidade.
+- Carrinho com **anti-IDOR** (itens procurados só no carrinho da sessão), **CSRF** em três camadas (token, `Origin`, `SameSite`) — um ataque real foi barrado — e **rate limit** (429).
+- Sessão em cookie cifrado e autenticado (AES-256-GCM), `HttpOnly`, `SameSite=Lax`, `Secure` em produção.
 - Segredos só em variáveis de ambiente; CI bloqueante com Brakeman, bundler-audit e importmap audit; Dependabot.
-- Próximas fases: **verificação de assinatura** dos webhooks do Stripe, **idempotência** no pagamento, autorização de pedidos (o comprador vê só os seus) e **preço sempre validado no servidor**.
+- O **preço nunca vem do navegador**: o carrinho usa sempre o preço do banco (com teste).
+- Próximas fases: **verificação de assinatura** dos webhooks do Stripe, **idempotência** no pagamento e autorização de pedidos (o comprador vê só os seus).
 
 ## Rodando localmente
 
@@ -63,7 +71,7 @@ bin/ci                # tudo de uma vez
 ## Roadmap
 
 1. ✅ Catálogo (produtos + imagens + busca/filtros)
-2. ⬜ Carrinho
+2. ✅ Carrinho (sessão, CSRF, anti-IDOR, rate limit, Turbo Streams)
 3. ⬜ Login do comprador (Devise) + checkout com Stripe em modo teste (webhook assinado e idempotente)
 4. ⬜ Pedidos + estoque (baixa no pagamento confirmado)
 5. ⬜ Painel do vendedor
@@ -78,3 +86,4 @@ Cada fase concluída ganha uma lição em [`docs/tutorial/`](docs/tutorial/):
 | [00 — Ambiente](docs/tutorial/00-ambiente-wsl.md) | WSL 2, Ubuntu, Ruby com mise, Docker Desktop, VS Code |
 | [01 — Ruby para quem vem do C/C++](docs/tutorial/01-ruby-para-quem-vem-do-c.md) | objetos, blocos, símbolos, mixins, exceções, Bundler |
 | [Fase 1 — Catálogo](docs/tutorial/fase-1-catalogo.md) | Rails, Active Record, migrations e restrições, SQL injection, XSS, CSP, Active Storage, RSpec, CI |
+| [Fase 2 — Carrinho](docs/tutorial/fase-2-carrinho.md) | cookies e sessão (AES-256-GCM), CSRF com ataque real, IDOR, rate limiting, Turbo Streams, concerns, jobs com Solid Queue |

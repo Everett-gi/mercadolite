@@ -11,6 +11,8 @@ class Product < ApplicationRecord
 
   belongs_to :vendor
   has_one :inventory, dependent: :destroy
+  # Produto que está em algum carrinho não pode ser apagado (desative com active: false).
+  has_many :cart_items, dependent: :restrict_with_error
 
   # Imagens guardadas pelo Active Storage (tabelas active_storage_*), com duas variantes
   # nomeadas. As variantes são geradas pela libvips na primeira vez que são pedidas.
@@ -56,9 +58,17 @@ class Product < ApplicationRecord
     Brl.from_cents(price_cents)
   end
 
+  # Unidades em estoque agora; 0 se o registro de estoque ainda não existe (produto novo,
+  # ainda não gravado).
+  #
+  # @return [Integer]
+  def stock_quantity
+    inventory&.quantity.to_i
+  end
+
   # @return [Boolean]
   def in_stock?
-    inventory.present? && inventory.quantity.positive?
+    stock_quantity.positive?
   end
 
   private

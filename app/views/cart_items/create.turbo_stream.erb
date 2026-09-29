@@ -1,0 +1,4 @@
+<%# Resposta Turbo Stream: em vez de uma página inteira, instruções "troque o elemento X
+    por este HTML". O Turbo aplica as duas sem recarregar a página do produto. %>
+<%= turbo_stream.update "flash", partial: "shared/flash" %>
+<%= turbo_stream.replace "cart_badge", partial: "shared/cart_badge" %>

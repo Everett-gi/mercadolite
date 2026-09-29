@@ -12,6 +12,12 @@ pt-BR:
       inventory:
         one: Estoque
         other: Estoques
+      cart:
+        one: Carrinho
+        other: Carrinhos
+      cart_item:
+        one: Item do carrinho
+        other: Itens do carrinho
     attributes:
       vendor:
         name: Nome
@@ -26,6 +32,9 @@ pt-BR:
         vendor: Vendedor
       inventory:
         quantity: Quantidade
+      cart_item:
+        quantity: Quantidade
+        product: Produto
     errors:
       models:
         product:
@@ -34,6 +43,14 @@ pt-BR:
               too_many: "podem ser no máximo %{count}"
               invalid_type: "— %{filename} não é JPEG, PNG nem WebP"
               too_large: "— %{filename} passa de %{max_mb} MB"
+        cart_item:
+          attributes:
+            product:
+              unavailable: "não está mais à venda"
+            quantity:
+              exceeds_stock:
+                one: "maior que o estoque (só resta %{count} unidade)"
+                other: "maior que o estoque (só restam %{count} unidades)"
 
   activemodel:
     attributes:
@@ -53,3 +70,23 @@ pt-BR:
             max_price:
               invalid_price: "deve ser um valor como 49,90"
               less_than_min_price: "não pode ser menor que o preço mínimo"
+
+  # Mensagens dos controllers (t(".chave") dentro da ação procura em controller.ação.chave).
+  cart_items:
+    create:
+      added:
+        one: "%{product} foi adicionado ao carrinho."
+        other: "%{count} unidades de %{product} foram adicionadas ao carrinho."
+      invalid_quantity: "Escolha uma quantidade de 1 a %{max}."
+    update:
+      updated: "Quantidade atualizada."
+      invalid_quantity: "Escolha uma quantidade de 1 a %{max}."
+    destroy:
+      removed: "Produto removido do carrinho."
+
+  # Textos de views (t(".chave") num partial procura em pasta.partial.chave).
+  carts:
+    line:
+      stock_left:
+        one: "Só resta 1 unidade em estoque. Ajuste a quantidade."
+        other: "Só restam %{count} unidades em estoque. Ajuste a quantidade."

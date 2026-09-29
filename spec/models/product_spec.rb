@@ -1,4 +1,5 @@
 require "rails_helper"
+require "vips" # a ruby-vips é require: false no Gemfile (veja o comentário lá)
 
 RSpec.describe Product do
   let(:fixtures) { Rails.root.join("spec/fixtures/files") }
@@ -42,6 +43,14 @@ RSpec.describe Product do
 
       expect(product.inventory).to be_persisted
       expect(product.inventory.quantity).to eq(0)
+      expect(product).not_to be_in_stock
+    end
+
+    it "trata estoque ainda não criado (produto não gravado) como zero" do
+      product = build(:product)
+
+      expect(product.inventory).to be_nil
+      expect(product.stock_quantity).to eq(0)
       expect(product).not_to be_in_stock
     end
 
@@ -108,6 +117,19 @@ RSpec.describe Product do
 
       expect(product).not_to be_valid
       expect(product.errors.full_messages.join).to include("passa de")
+    end
+
+    # Gera a miniatura DE VERDADE (libvips via gem ruby-vips), em vez de só conferir a URL.
+    # Protege contra uma atualização de gem que tire a ruby-vips do bundle: sem este teste,
+    # o CI passaria e as imagens só quebrariam em produção.
+    it "gera a miniatura com a libvips" do
+      product = create(:product, :with_image)
+
+      variant = product.images.first.variant(:thumb).processed
+      thumbnail = Vips::Image.new_from_buffer(variant.download, "")
+
+      expect(variant.key).to be_present
+      expect([ thumbnail.width, thumbnail.height ].max).to be <= 400
     end
 
     it "limita a quantidade de imagens" do

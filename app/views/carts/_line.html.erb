@@ -1,0 +1,39 @@
+<%# Uma linha do carrinho. "line" é um CartItem com produto, estoque e imagens já
+    carregados (Cart#lines usa includes: nada de N+1 aqui). %>
+<% product = line.product %>
+<li class="flex gap-4 p-4">
+  <%= link_to product_path(product), class: "w-20 shrink-0" do %>
+    <%= render "products/image", image: product.images.first, variant: :thumb,
+          alt: product.name, css: "aspect-square w-20 rounded object-cover" %>
+  <% end %>
+
+  <div class="flex-1 space-y-1">
+    <%= link_to product.name, product_path(product), class: "font-medium hover:underline" %>
+    <p class="text-xs text-stone-500"><%= product.vendor.name %> · <%= price_tag(product.price_cents) %> cada</p>
+
+    <% if !line.available? %>
+      <p class="text-sm text-red-700">Este produto não está mais disponível. Remova-o para continuar.</p>
+    <% elsif line.exceeds_stock? %>
+      <p class="text-sm text-amber-700"><%= t(".stock_left", count: product.stock_quantity) %></p>
+    <% end %>
+
+    <div class="flex flex-wrap items-center gap-3 pt-2">
+      <% if line.available? %>
+        <%= form_with scope: :cart_item, url: cart_item_path(line), method: :patch, class: "flex items-center gap-2" do |form| %>
+          <%= form.label :quantity, "Qtd.", class: "text-sm text-stone-600", for: "quantity_#{line.id}" %>
+          <%= form.select :quantity,
+                1..[ [ product.stock_quantity, line.quantity ].max, CartItem::MAX_QUANTITY ].min,
+                { selected: line.quantity },
+                id: "quantity_#{line.id}", class: "rounded-md border border-stone-300 bg-white px-2 py-1 text-sm" %>
+          <%= form.submit "Atualizar", class: "rounded-md border border-stone-300 px-3 py-1 text-sm hover:bg-stone-100" %>
+        <% end %>
+      <% end %>
+      <%= button_to "Remover", cart_item_path(line), method: :delete,
+            class: "text-sm text-red-700 underline hover:text-red-900" %>
+    </div>
+  </div>
+
+  <div class="text-right font-semibold <%= "text-stone-400 line-through" unless line.purchasable? %>">
+    <%= price_tag(line.line_total_cents) %>
+  </div>
+</li>

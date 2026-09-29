@@ -23,10 +23,12 @@
       <div class="mx-auto flex max-w-6xl items-center gap-6 px-4 py-4">
         <%= link_to "MercadoLite", root_path, class: "text-xl font-bold tracking-tight text-emerald-700" %>
         <span class="hidden text-sm text-stone-500 sm:inline">Marketplace de demonstração · pagamentos em modo teste</span>
+        <%= render "shared/cart_badge" %>
       </div>
     </header>
 
     <main class="mx-auto max-w-6xl px-4 py-8">
+      <div id="flash"><%= render "shared/flash" %></div>
       <%= yield %>
     </main>
 

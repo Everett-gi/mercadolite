@@ -53,6 +53,12 @@ mercado-gil.duckdns.org   { reverse_proxy mercadolite-app:3000 }
 - Em produção o Rails usa 3 bancos no mesmo PostgreSQL: `mercadolite_production`,
   `mercadolite_production_cache` (Solid Cache) e `mercadolite_production_queue` (Solid Queue).
   O `db:prepare` cria os três.
+- Defina `SOLID_QUEUE_IN_PUMA=true` para o Puma rodar os workers do Solid Queue. Sem eles,
+  os jobs agendados (como a limpeza diária de carrinhos abandonados) não rodam.
+- O Caddy precisa falar com a aplicação por uma **rede privada** do Docker. O Rails só confia
+  no `X-Forwarded-For` (o IP real do cliente) vindo de IPs privados, e o rate limit do
+  carrinho é por IP. Se o Rails enxergar só o IP do Caddy, todos os clientes dividem o
+  mesmo limite.
 
 ## Checklist de deploy
 

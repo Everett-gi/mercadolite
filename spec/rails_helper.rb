@@ -30,4 +30,10 @@ RSpec.configure do |config|
 
   # Permite escrever create(:product) em vez de FactoryBot.create(:product).
   config.include FactoryBot::Syntax::Methods
+
+  # travel/travel_to: "adiantam o relógio" dentro de um bloco (Time.now fica simulado).
+  config.include ActiveSupport::Testing::TimeHelpers
+
+  # O cache guarda os contadores do rate_limit: cada exemplo começa com ele vazio.
+  config.before { Rails.cache.clear }
 end
