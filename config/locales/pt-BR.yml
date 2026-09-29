@@ -16,6 +16,7 @@ pt-BR:
       vendor:
         name: Nome
         description: Descrição
+        products: produtos
       product:
         name: Nome
         description: Descrição

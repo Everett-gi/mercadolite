@@ -44,7 +44,7 @@ RSpec.describe Vendor do
     create(:product, vendor:)
 
     expect(vendor.destroy).to be(false)
-    expect(vendor.errors[:base]).to be_present
+    expect(vendor.errors[:base]).to include("Não é possível excluir o registro pois existem produtos dependentes")
     expect(Vendor.exists?(vendor.id)).to be(true)
   end
 end
