@@ -20,7 +20,11 @@ Rails.application.configure do
 
   # Show full error reports.
   config.consider_all_requests_local = true
-  config.cache_store = :null_store
+  # Memória em vez de :null_store: o rate_limit conta as requisições no cache, e com o
+  # :null_store ele nunca contaria nada — nos testes, o limite simplesmente não existiria
+  # (verificado: o teste do 429 recebe um 302). O cache é limpo antes de cada exemplo
+  # (spec/rails_helper.rb).
+  config.cache_store = :memory_store
 
   # Render exception templates for rescuable exceptions and raise for other exceptions.
   config.action_dispatch.show_exceptions = :rescuable

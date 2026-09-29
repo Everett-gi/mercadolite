@@ -1,0 +1,10 @@
+<%# Avisos de uma requisição para a próxima (flash). role="status"/"alert" faz leitores de
+    tela anunciarem a mensagem. O texto do flash é escapado como qualquer outra saída.
+    (Cuidado: um comentário ERB termina no PRIMEIRO fecha-tag; escrever a tag de saída
+    completa aqui dentro encerraria o comentário antes da hora.) %>
+<% if notice.present? %>
+  <p class="mb-6 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" role="status"><%= notice %></p>
+<% end %>
+<% if alert.present? %>
+  <p class="mb-6 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert"><%= alert %></p>
+<% end %>
