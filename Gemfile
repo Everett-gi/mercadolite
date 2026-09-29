@@ -34,7 +34,7 @@ gem "solid_queue"
 gem "bootsnap", require: false
 
 # Variantes de imagem do Active Storage (miniaturas), usando a libvips.
-gem "image_processing", "~> 1.2"
+gem "image_processing", "~> 2.1"
 
 # Traduções prontas do Rails para pt-BR: mensagens de validação, datas, moeda.
 gem "rails-i18n", "~> 8.1"
