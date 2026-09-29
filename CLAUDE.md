@@ -164,7 +164,8 @@ bin/ci                               # tudo o que o CI roda
 - **`numericality: { in: 1..10 }` gera "deve estar em 1..10"**: prefira
   `greater_than_or_equal_to`/`less_than_or_equal_to` (mensagens melhores no rails-i18n).
 - **`image_processing` 2.x não traz mais a `ruby-vips`:** ela está declarada no `Gemfile`
-  (as miniaturas e o `db/seeds.rb` a usam). Um teste gera uma miniatura de verdade; o CI de
+  com `require: false` (carregá-la no boot abriria a libvips nativa e quebraria jobs de CI
+  sem libvips; as miniaturas e o `db/seeds.rb` a carregam sob demanda). Um teste gera uma miniatura de verdade; o CI de
   uma atualização que tire a gem do bundle fica vermelho. Leia o changelog de toda
   atualização *major* do Dependabot antes do merge.
 - **Status 422 no Rack atual é `:unprocessable_content`** (`:unprocessable_entity` está

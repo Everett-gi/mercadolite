@@ -889,6 +889,7 @@ Resultado final: `190 examples, 0 failures, 1 pending` (o `pending` é o da fase
 | "Tanto faz a ordem no `respond_to`" | o `curl` (`Accept: */*`) recebeu um Turbo Stream em vez do redirect | HTML primeiro, e um teste com `Accept: */*` |
 | "'Às 4h' é 4h UTC" | a próxima execução saiu 07:00 UTC, 4h **de Brasília** | registrado aqui e no comentário do job |
 | "O índice só de `cart_id` ajuda" | é redundante: o composto `[cart_id, product_id]` já atende (o `EXPLAIN` mostrou) | `index: false` |
+| "Declarar a `ruby-vips` no `Gemfile` não muda nada no boot" | o `Bundler.require` passou a carregá-la no boot, e o job `scan_js` (sem libvips) quebrou | `require: false` (seção abaixo) |
 | "Se o CI do Dependabot ficar verde, a atualização é segura" | a `image_processing` 2.x tirou a `ruby-vips` do bundle, e nenhum teste gerava uma miniatura de verdade: o CI passaria e as imagens quebrariam só em produção | teste que processa a variante + `ruby-vips` declarada no `Gemfile` (seção abaixo) |
 
 ### O Dependabot e a versão *major*
@@ -929,13 +930,41 @@ por padrão os *loaders* da libvips que nunca passaram por *fuzzing*. Isso impor
 quando vendedores enviarem imagens. Por isso a atualização entrou neste PR, já com a
 `ruby-vips` declarada, e o PR do Dependabot fica redundante.
 
-Duas lições para levar:
+**E o CI ainda pegou mais uma.** No push dessa correção, o job `scan_js` ficou vermelho:
+
+```
+Could not open library 'libvips.so.42': libvips.so.42: cannot open shared object file
+  ... from ruby-vips-2.3.0/lib/vips.rb:48
+  ... from config/application.rb:19   (Bundler.require)
+```
+
+Por padrão, o `Bundler.require` do boot carrega **toda** gem do `Gemfile`, e carregar a
+`ruby-vips` abre na hora a biblioteca nativa libvips (via FFI, o `dlopen` do Ruby). O job
+`scan_js` sobe a aplicação só para auditar os pacotes JavaScript e não instala a libvips (só o
+job `test` instala). Antes, a `ruby-vips` era transitiva e só carregava quando uma miniatura era
+gerada.
+
+Reproduzimos localmente, tirando a libvips do lugar por um instante: o `bin/importmap audit`
+falhou com o mesmo erro. A correção:
+
+```ruby
+gem "ruby-vips", "~> 2.3", require: false
+```
+
+`require: false` mantém a gem no bundle, mas não a carrega no boot: ela entra sob demanda, na
+primeira miniatura (a `image_processing` faz o `require "vips"`), ou onde o código pede
+explicitamente (os seeds e o teste). Conferimos três coisas: sem a libvips, o audit passou; as
+13 miniaturas da vitrine foram regeradas no navegador sem erro; e a suíte continuou verde.
+
+Três lições para levar:
 
 1. **Declare no `Gemfile` toda gem que o seu código usa diretamente**, mesmo que ela já venha
    de carona com outra. É o equivalente a incluir o header que você usa, em vez de depender
    de um `#include` indireto que um dia pode sumir.
 2. **CI verde prova só o que os testes testam.** Antes de aceitar uma atualização *major*,
    leia o changelog e pergunte: "algum teste exercita isto de verdade?"
+3. **Gems com biblioteca nativa pedem `require: false`** quando não são usadas no boot. Senão,
+   toda máquina que sobe a aplicação passa a precisar da biblioteca, até as que não a usam.
 
 ---
 
