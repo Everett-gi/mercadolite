@@ -1,0 +1,21 @@
+<%# Card de um produto na vitrine. "product" é a variável local que o
+    render partial: "product", collection: @products passa para cada item. %>
+<li class="overflow-hidden rounded-lg border border-stone-200 bg-white shadow-sm">
+  <%= link_to product_path(product), class: "block hover:opacity-90" do %>
+    <%= render "products/image", image: product.images.first, variant: :thumb,
+          alt: product.name, css: "aspect-square w-full object-cover" %>
+  <% end %>
+
+  <div class="space-y-1 p-4">
+    <h2 class="font-medium leading-snug">
+      <%= link_to product.name, product_path(product), class: "hover:underline" %>
+    </h2>
+    <p class="text-xs text-stone-500"><%= product.vendor.name %></p>
+    <div class="flex items-center justify-between pt-2">
+      <span class="text-lg font-semibold"><%= price_tag(product.price_cents) %></span>
+      <% unless product.in_stock? %>
+        <span class="rounded bg-stone-200 px-2 py-0.5 text-xs text-stone-700">Esgotado</span>
+      <% end %>
+    </div>
+  </div>
+</li>

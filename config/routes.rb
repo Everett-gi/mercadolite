@@ -1,14 +1,13 @@
+# Rotas: a tabela que liga "verbo HTTP + caminho" a "controller#ação".
+# Veja todas com:  bin/rails routes
 Rails.application.routes.draw do
-  # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
+  # A vitrine é a página inicial.
+  root "products#index"
 
-  # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
-  # Can be used by load balancers and uptime monitors to verify that the app is live.
+  # Só leitura nesta fase: GET /products (lista) e GET /products/:id (detalhe).
+  # O cadastro de produtos chega com o painel do vendedor (fase 5).
+  resources :products, only: %i[index show]
+
+  # Health check: responde 200 se a aplicação subiu. Usado pelo Docker/Caddy no deploy.
   get "up" => "rails/health#show", as: :rails_health_check
-
-  # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
-  # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
-  # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
-
-  # Defines the root path route ("/")
-  # root "posts#index"
 end
