@@ -77,6 +77,23 @@ RSpec.describe "Webhooks do Stripe", type: :request do
     expect(Rails.logger).to have_received(:error).with(/amount_mismatch/)
   end
 
+  # O evento traz dados do comprador (nome, e-mail, endereço), e o Rails escreve no log os
+  # parâmetros de toda requisição ("Parameters: ..."), inclusive em produção (nível info).
+  it "não escreve no log os dados do comprador que vêm no evento" do
+    session = stripe_session_payload(order, customer_details: { name: "Maria Compradora", email: "maria@exemplo.test",
+                                                                 address: { postal_code: "01310-100" } })
+    log = StringIO.new
+    original = ActionController::Base.logger
+    ActionController::Base.logger = ActiveSupport::Logger.new(log)
+
+    post_stripe_webhook(stripe_event_json(type: "checkout.session.completed", object: session))
+
+    expect(log.string).to include("StripeWebhooksController#create")
+    expect(log.string).not_to include("Maria Compradora", "maria@exemplo.test", "01310-100")
+  ensure
+    ActionController::Base.logger = original
+  end
+
   it "sessão expirada cancela o pedido" do
     expired = stripe_event_json(type: "checkout.session.expired", object: stripe_session_payload(order, status: "expired"))
 
