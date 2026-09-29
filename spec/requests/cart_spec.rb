@@ -172,15 +172,8 @@ RSpec.describe "Carrinho", type: :request do
     end
   end
 
-  # No ambiente de teste a proteção CSRF vem desligada (config/environments/test.rb).
-  # Aqui ela é ligada de propósito, para provar que funciona.
   describe "proteção CSRF" do
-    around do |example|
-      ActionController::Base.allow_forgery_protection = true
-      example.run
-    ensure
-      ActionController::Base.allow_forgery_protection = false
-    end
+    include_context "com proteção CSRF ligada" # spec/support/forgery_protection.rb
 
     it "recusa POST sem o token do formulário (como faria um site atacante)" do
       expect { add_to_cart(product) }.not_to change(CartItem, :count)
