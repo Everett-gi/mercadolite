@@ -874,7 +874,7 @@ Técnicas novas desta fase:
   de volta e vimos o teste falhar (`1 example, 1 failure`); com a correção,
   `1 example, 0 failures`. Um teste que nunca foi visto falhando pode estar testando nada.
 
-Resultado final: `189 examples, 0 failures, 1 pending` (o `pending` é o da fase 1).
+Resultado final: `190 examples, 0 failures, 1 pending` (o `pending` é o da fase 1).
 
 ---
 
@@ -889,6 +889,53 @@ Resultado final: `189 examples, 0 failures, 1 pending` (o `pending` é o da fase
 | "Tanto faz a ordem no `respond_to`" | o `curl` (`Accept: */*`) recebeu um Turbo Stream em vez do redirect | HTML primeiro, e um teste com `Accept: */*` |
 | "'Às 4h' é 4h UTC" | a próxima execução saiu 07:00 UTC, 4h **de Brasília** | registrado aqui e no comentário do job |
 | "O índice só de `cart_id` ajuda" | é redundante: o composto `[cart_id, product_id]` já atende (o `EXPLAIN` mostrou) | `index: false` |
+| "Se o CI do Dependabot ficar verde, a atualização é segura" | a `image_processing` 2.x tirou a `ruby-vips` do bundle, e nenhum teste gerava uma miniatura de verdade: o CI passaria e as imagens quebrariam só em produção | teste que processa a variante + `ruby-vips` declarada no `Gemfile` (seção abaixo) |
+
+### O Dependabot e a versão *major*
+
+Enquanto esta fase era feita, o Dependabot abriu um PR subindo a `image_processing` de 1.14
+para **2.1**. Uma mudança de versão *major* (o primeiro número) avisa: "pode quebrar". O
+changelog dizia que, a partir da 2.0, `ruby-vips` e `mini_magick` são dependências
+**opcionais**, e o diff do PR confirmava: `ruby-vips` e `ffi` saíam do `Gemfile.lock`.
+
+Isso quebraria duas coisas: as miniaturas (o Active Storage usa a libvips por meio da
+`ruby-vips`) e os seeds, que fazem `require "vips"` direto — ou seja, usávamos uma dependência
+**transitiva** (que vinha "de carona" com outra gem) como se fosse nossa.
+
+Pior: **o CI passaria**, porque os testes da fase 1 só conferiam a URL da miniatura, sem
+gerá-la. Reproduzimos o estado do PR e escrevemos o teste que faltava:
+
+```ruby
+it "gera a miniatura com a libvips" do
+  product = create(:product, :with_image)
+
+  variant = product.images.first.variant(:thumb).processed
+  thumbnail = Vips::Image.new_from_buffer(variant.download, "")
+
+  expect(variant.key).to be_present
+  expect([ thumbnail.width, thumbnail.height ].max).to be <= 400
+end
+```
+
+| Estado | Resultado do teste novo |
+|---|---|
+| 1.14, `ruby-vips` transitiva (antes) | passa |
+| 2.1, sem `ruby-vips` (o PR do Dependabot) | **falha** (`NoMethodError` ao processar) |
+| 2.1 + `gem "ruby-vips"` no `Gemfile` (a correção) | passa, e a suíte inteira também |
+
+A atualização valia a pena: as versões 2.0.x fecharam falhas de execução remota de código
+(quando nomes de operação vêm do usuário, o que não é o nosso caso) e passaram a bloquear
+por padrão os *loaders* da libvips que nunca passaram por *fuzzing*. Isso importa na fase 5,
+quando vendedores enviarem imagens. Por isso a atualização entrou neste PR, já com a
+`ruby-vips` declarada, e o PR do Dependabot fica redundante.
+
+Duas lições para levar:
+
+1. **Declare no `Gemfile` toda gem que o seu código usa diretamente**, mesmo que ela já venha
+   de carona com outra. É o equivalente a incluir o header que você usa, em vez de depender
+   de um `#include` indireto que um dia pode sumir.
+2. **CI verde prova só o que os testes testam.** Antes de aceitar uma atualização *major*,
+   leia o changelog e pergunte: "algum teste exercita isto de verdade?"
 
 ---
 
@@ -899,7 +946,7 @@ No Ubuntu (WSL), dentro de `~/dev/mercadolite`:
 ```bash
 git pull
 bin/rails db:migrate          # cria carts e cart_items
-bundle exec rspec             # esperado: 189 examples, 0 failures, 1 pending
+bundle exec rspec             # esperado: 190 examples, 0 failures, 1 pending
 bin/dev                       # http://localhost:3000
 ```
 
@@ -1014,11 +1061,11 @@ Depois, no navegador:
    uma sessão nova (conferido com o `curl`, seção 3). Não há o que "tratar": para o servidor,
    é só um visitante sem sessão.
 2. Falha só `CartItem atualiza o updated_at do carrinho ao mudar (touch)` (conferido:
-   `189 examples, 1 failure`). Em produção, o `updated_at` do carrinho pararia de mudar quando
+   `190 examples, 1 failure`). Em produção, o `updated_at` do carrinho pararia de mudar quando
    a pessoa mexesse nos itens, e o job apagaria, 30 dias depois da **criação**, um carrinho
    que ela usou ontem.
 3. Falham **2**: `anti-IDOR não deixa uma sessão alterar nem apagar item do carrinho de outra`
-   e `anti-IDOR sem carrinho na sessão, qualquer id dá 404` (conferido: `189 examples,
+   e `anti-IDOR sem carrinho na sessão, qualquer id dá 404` (conferido: `190 examples,
    2 failures`). Todo o resto passa, porque adicionar, alterar e remover "funcionam". Testes
    de funcionalidade não protegem propriedades de segurança: cada garantia precisa do próprio
    teste.

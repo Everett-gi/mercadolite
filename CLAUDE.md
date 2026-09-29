@@ -163,6 +163,10 @@ bin/ci                               # tudo o que o CI roda
 - **`recurring.yml` segue o `config.time_zone`:** "every day at 4am" é 4h de Brasília (07:00 UTC).
 - **`numericality: { in: 1..10 }` gera "deve estar em 1..10"**: prefira
   `greater_than_or_equal_to`/`less_than_or_equal_to` (mensagens melhores no rails-i18n).
+- **`image_processing` 2.x não traz mais a `ruby-vips`:** ela está declarada no `Gemfile`
+  (as miniaturas e o `db/seeds.rb` a usam). Um teste gera uma miniatura de verdade; o CI de
+  uma atualização que tire a gem do bundle fica vermelho. Leia o changelog de toda
+  atualização *major* do Dependabot antes do merge.
 - **Status 422 no Rack atual é `:unprocessable_content`** (`:unprocessable_entity` está
   obsoleto e gera aviso).
 - **`db:prepare` carrega os seeds sempre que CRIA o banco principal, em qualquer ambiente**
