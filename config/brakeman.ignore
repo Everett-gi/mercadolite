@@ -1,0 +1,28 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "Redirect",
+      "warning_code": 18,
+      "fingerprint": "e59a8a18da7a33418660cb325bd4c1b22f2e3493a272b3811cfe00960b23ff79",
+      "check_name": "Redirect",
+      "message": "Possible unprotected redirect",
+      "file": "app/controllers/checkouts_controller.rb",
+      "line": 26,
+      "link": "https://brakemanscanner.org/docs/warning_types/redirect/",
+      "code": "redirect_to(start_payment(Order.place(current_cart, current_user)), :allow_other_host => true, :status => :see_other)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "CheckoutsController",
+        "method": "create"
+      },
+      "user_input": null,
+      "confidence": "Weak",
+      "cwe_id": [
+        601
+      ],
+      "note": "Falso positivo: a URL vem da resposta da API do Stripe (não do usuário), e StripeCheckout#start recusa qualquer host diferente de checkout.stripe.com antes do redirecionamento (teste: spec/requests/checkout_spec.rb, 'recusa redirecionar para uma URL que não é do Stripe')."
+    }
+  ],
+  "brakeman_version": "8.0.6"
+}

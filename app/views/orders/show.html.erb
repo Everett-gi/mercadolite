@@ -1,0 +1,58 @@
+<% content_for :title, "Pedido nº #{@order.id}" %>
+
+<div class="mx-auto max-w-2xl space-y-6">
+  <div class="flex flex-wrap items-center gap-3">
+    <h1 class="text-2xl font-bold tracking-tight">Pedido nº <%= @order.id %></h1>
+    <%= order_status_badge(@order) %>
+  </div>
+
+  <% if @order.pending? %>
+    <%# Enquanto o Stripe não confirma, o pedido fica pendente. A confirmação chega pelo
+        webhook, em geral em poucos segundos. %>
+    <div class="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800" role="status">
+      Aguardando a confirmação do pagamento pelo Stripe.
+      <%= link_to "Atualizar", order_path(@order), class: "font-medium underline" %>
+    </div>
+  <% elsif @order.paid? %>
+    <div class="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" role="status">
+      Pagamento confirmado em <%= l(@order.paid_at, format: :long) %>. Obrigado pela compra!
+    </div>
+  <% elsif @order.canceled? %>
+    <div class="rounded-md border border-stone-200 bg-stone-100 p-3 text-sm text-stone-700" role="status">
+      O pagamento não foi concluído e o pedido foi cancelado. Os produtos continuam no seu carrinho.
+    </div>
+  <% end %>
+
+  <div class="rounded-lg border border-stone-200 bg-white">
+    <table class="w-full text-left text-sm">
+      <thead class="border-b border-stone-200 text-stone-500">
+        <tr>
+          <th class="p-3 font-medium">Produto</th>
+          <th class="p-3 text-right font-medium">Qtd.</th>
+          <th class="p-3 text-right font-medium">Preço</th>
+          <th class="p-3 text-right font-medium">Total</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-stone-200">
+        <%# Nome e preço COPIADOS na hora da compra (OrderItem), e não os de hoje. %>
+        <% @items.each do |item| %>
+          <tr>
+            <td class="p-3"><%= item.product_name %></td>
+            <td class="p-3 text-right"><%= item.quantity %></td>
+            <td class="p-3 text-right"><%= price_tag(item.unit_price_cents) %></td>
+            <td class="p-3 text-right"><%= price_tag(item.line_total_cents) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+      <tfoot class="border-t border-stone-300">
+        <tr>
+          <td class="p-3 font-semibold" colspan="3">Total</td>
+          <td class="p-3 text-right text-lg font-semibold"><%= price_tag(@order.total_cents) %></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <p class="text-sm text-stone-500">Feito em <%= l(@order.created_at, format: :long) %>.
+    <%= link_to "Voltar para Meus pedidos", orders_path, class: "text-emerald-700 underline" %></p>
+</div>

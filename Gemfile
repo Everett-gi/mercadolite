@@ -52,6 +52,12 @@ gem "devise", "~> 5.0"
 # Traduções do Devise (mensagens e telas) para pt-BR.
 gem "devise-i18n", "~> 1.16"
 
+# Autorização: "este usuário pode ver ESTE pedido?". Cada regra fica numa classe (policy).
+gem "pundit", "~> 2.5"
+
+# Cliente oficial da API do Stripe (checkout e verificação da assinatura dos webhooks).
+gem "stripe", "~> 19.6"
+
 group :development, :test do
   # Depurador (breakpoints com "debugger" no código).
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
@@ -77,4 +83,10 @@ end
 group :development do
   # Console Ruby na página de erro, só em desenvolvimento.
   gem "web-console"
+end
+
+group :test do
+  # Intercepta as requisições HTTP dos testes: nenhum teste chama a API do Stripe de verdade
+  # (o CI não tem chave nenhuma), e cada teste confere exatamente o que seria enviado.
+  gem "webmock", "~> 3.26"
 end

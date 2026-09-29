@@ -22,6 +22,16 @@ Rails.application.routes.draw do
     confirmations: "users/confirmations"
   }
 
+  # Checkout: POST /checkout (cria o pedido e vai para o Stripe) e GET /checkout/success
+  # (a volta do Stripe depois do pagamento).
+  resource :checkout, only: :create do
+    get :success
+  end
+  # Meus pedidos: GET /orders e GET /orders/:id.
+  resources :orders, only: %i[index show]
+  # Webhooks do Stripe (servidor a servidor, autenticados pela assinatura).
+  post "webhooks/stripe", to: "stripe_webhooks#create", as: :stripe_webhook
+
   # Páginas fixas exigidas pela LGPD, linkadas no cadastro e no rodapé.
   get "terms", to: "pages#terms", as: :terms
   get "privacy", to: "pages#privacy", as: :privacy

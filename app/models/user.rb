@@ -25,6 +25,10 @@ class User < ApplicationRecord
   # Gera um session_token aleatório (SecureRandom) na criação.
   has_secure_token :session_token
   has_one :cart, dependent: :destroy
+  # Excluir a conta NÃO apaga os pedidos (são registros da venda), mas desliga-os da pessoa
+  # (LGPD): o pedido fica sem dono e sem nenhum dado pessoal. O banco faz o mesmo
+  # (ON DELETE SET NULL).
+  has_many :orders, dependent: :nullify
 
   # Caixa "Li e aceito os termos" do cadastro. É um atributo virtual (não é coluna).
   # allow_nil: false — sem isso, a validação é PULADA quando o campo nem é enviado.

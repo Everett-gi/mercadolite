@@ -2,6 +2,7 @@
     um link: um GET que desloga poderia ser disparado por qualquer site, com uma <img>. %>
 <nav class="flex items-center gap-1 text-sm font-medium" aria-label="Conta">
   <% if user_signed_in? %>
+    <%= link_to "Meus pedidos", orders_path, class: "rounded-md px-3 py-2 text-stone-700 hover:bg-stone-100" %>
     <%= link_to "Minha conta", edit_user_registration_path, class: "rounded-md px-3 py-2 text-stone-700 hover:bg-stone-100" %>
     <%= button_to "Sair", destroy_user_session_path, method: :delete,
           class: "rounded-md px-3 py-2 text-stone-700 hover:bg-stone-100" %>

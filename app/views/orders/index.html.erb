@@ -1,0 +1,24 @@
+<% content_for :title, "Meus pedidos" %>
+
+<h1 class="mb-6 text-2xl font-bold tracking-tight">Meus pedidos</h1>
+
+<% if @orders.empty? %>
+  <div class="rounded-md border border-dashed border-stone-300 p-8 text-center text-stone-600">
+    <p>Você ainda não fez nenhum pedido.</p>
+    <p class="mt-2"><%= link_to "Ver os produtos", products_path, class: "text-emerald-700 underline" %></p>
+  </div>
+<% else %>
+  <ul class="divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white">
+    <% @orders.each do |order| %>
+      <li>
+        <%= link_to order_path(order), class: "flex flex-wrap items-center gap-x-6 gap-y-1 p-4 hover:bg-stone-50" do %>
+          <span class="font-medium">Pedido nº <%= order.id %></span>
+          <span class="text-sm text-stone-500"><%= l(order.created_at, format: :short) %></span>
+          <span class="text-sm text-stone-500"><%= pluralize(order.items.sum(&:quantity), "item", plural: "itens") %></span>
+          <%= order_status_badge(order) %>
+          <span class="ml-auto font-semibold"><%= price_tag(order.total_cents) %></span>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+<% end %>

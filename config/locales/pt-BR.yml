@@ -21,6 +21,12 @@ pt-BR:
       user:
         one: Conta
         other: Contas
+      order:
+        one: Pedido
+        other: Pedidos
+      order_item:
+        one: Item do pedido
+        other: Itens do pedido
     attributes:
       vendor:
         name: Nome
@@ -44,6 +50,20 @@ pt-BR:
         password_confirmation: Confirmação da senha
         current_password: Senha atual
         terms_of_service: Os Termos de Uso e a Política de Privacidade
+      order:
+        items: Itens
+        total_cents: Total
+      # Nomes dos status: Order.human_attribute_name("status.paid") procura em
+      # activerecord.attributes.order/status.paid.
+      order/status:
+        pending: Aguardando pagamento
+        paid: Pago
+        shipped: Enviado
+        canceled: Cancelado
+      order_item:
+        product_name: Produto
+        unit_price_cents: Preço
+        quantity: Quantidade
     errors:
       models:
         product:
@@ -72,6 +92,11 @@ pt-BR:
               predictable_email: "não pode conter o seu e-mail"
             terms_of_service:
               accepted: "precisam ser aceitos"
+        order:
+          attributes:
+            base:
+              empty_cart: "Seu carrinho está vazio."
+              unavailable_items: "Há itens indisponíveis no carrinho: ajuste-os antes de finalizar a compra."
 
   activemodel:
     attributes:
@@ -104,6 +129,10 @@ pt-BR:
       invalid_quantity: "Escolha uma quantidade de 1 a %{max}."
     destroy:
       removed: "Produto removido do carrinho."
+  checkouts:
+    create:
+      not_configured: "O pagamento não está configurado neste servidor (falta a STRIPE_SECRET_KEY)."
+      unavailable: "Não foi possível abrir a página de pagamento agora. Tente de novo em instantes."
   users:
     registrations:
       destroy:
