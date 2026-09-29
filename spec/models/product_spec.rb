@@ -118,6 +118,19 @@ RSpec.describe Product do
       expect(product.errors.full_messages.join).to include("passa de")
     end
 
+    # Gera a miniatura DE VERDADE (libvips via gem ruby-vips), em vez de só conferir a URL.
+    # Protege contra uma atualização de gem que tire a ruby-vips do bundle: sem este teste,
+    # o CI passaria e as imagens só quebrariam em produção.
+    it "gera a miniatura com a libvips" do
+      product = create(:product, :with_image)
+
+      variant = product.images.first.variant(:thumb).processed
+      thumbnail = Vips::Image.new_from_buffer(variant.download, "")
+
+      expect(variant.key).to be_present
+      expect([ thumbnail.width, thumbnail.height ].max).to be <= 400
+    end
+
     it "limita a quantidade de imagens" do
       product = build(:product)
       (Product::MAX_IMAGES + 1).times { attach(product, "produto.png") }
