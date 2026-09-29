@@ -32,6 +32,11 @@
           <td class="py-2">Apagado após 30 dias sem uso, ou junto com a conta.</td>
         </tr>
         <tr>
+          <td class="py-2 pr-4">Pedidos</td>
+          <td class="py-2 pr-4">Registrar o que foi comprado, por quanto e quando (itens, valores, datas e o identificador do pagamento no Stripe).</td>
+          <td class="py-2">Guardados como registro da venda. Se você excluir a conta, o pedido fica, mas deixa de ser ligado a você.</td>
+        </tr>
+        <tr>
           <td class="py-2 pr-4">Endereço IP</td>
           <td class="py-2 pr-4">Segurança: limitar tentativas repetidas (login, cadastro) e diagnosticar falhas nos registros técnicos (logs).</td>
           <td class="py-2">Contadores de tentativas: minutos. Logs: o tempo necessário para segurança e diagnóstico.</td>
@@ -45,8 +50,8 @@
 
   <h2 class="pt-2 text-lg font-semibold">2. Bases legais</h2>
   <p>
-    A conta e o carrinho existem para prestar o serviço que você pediu (execução de contrato,
-    art. 7º, V). Os limites de tentativas e os logs protegem você e a loja (legítimo interesse,
+    A conta, o carrinho e os pedidos existem para prestar o serviço que você pediu (execução
+    de contrato, art. 7º, V). Os limites de tentativas e os logs protegem você e a loja (legítimo interesse,
     art. 7º, IX).
   </p>
 
@@ -60,7 +65,9 @@
   <h2 class="pt-2 text-lg font-semibold">4. Com quem compartilhamos</h2>
   <ul class="list-disc space-y-1 pl-6">
     <li>O provedor de e-mail, só para entregar as mensagens da conta.</li>
-    <li>O Stripe, quando o pagamento estiver disponível: os dados do cartão vão direto para ele e nunca passam pelos nossos servidores.</li>
+    <li>O Stripe, que processa o pagamento (em modo de teste): recebe o seu e-mail (para o
+      recibo) e os itens e valores do pedido. Os dados do cartão você digita direto na página
+      do Stripe, e eles nunca passam pelos nossos servidores.</li>
   </ul>
   <p>Não vendemos nem cedemos dados a mais ninguém.</p>
 
@@ -68,7 +75,8 @@
   <p>
     A LGPD (art. 18) garante, entre outros, o acesso, a correção e a eliminação dos seus
     dados. Em "Minha conta" você corrige o e-mail e <strong>exclui a conta</strong> por
-    conta própria: o e-mail, o hash da senha e o carrinho são apagados na hora.
+    conta própria: o e-mail, o hash da senha e o carrinho são apagados na hora, e os pedidos
+    deixam de ser ligados a você.
   </p>
 
   <h2 class="pt-2 text-lg font-semibold">6. Contato</h2>

@@ -14,7 +14,10 @@ Rails.application.configure do
     policy.connect_src :self            # fetch/XHR (o Turbo usa) só para o próprio site
     policy.object_src  :none            # nada de <object>/<embed> (plugins)
     policy.base_uri    :self            # impede um <base href> injetado de desviar URLs relativas
-    policy.form_action :self            # formulários só enviam para o próprio site
+    # Formulários só enviam para o próprio site. O navegador aplica esta regra também ao
+    # REDIRECIONAMENTO que vem depois do envio: o POST /checkout termina redirecionando para
+    # a página de pagamento do Stripe, que por isso precisa estar na lista.
+    policy.form_action :self, "https://checkout.stripe.com"
     policy.frame_ancestors :none        # ninguém pode colocar o site num <iframe> (clickjacking)
   end
 

@@ -60,6 +60,13 @@ mercado-gil.duckdns.org   { reverse_proxy mercadolite-app:3000 }
   público, usado nos links), `MAILER_FROM` e as variáveis `SMTP_*` de um provedor de e-mail
   transacional. O remetente precisa ser de um domínio autorizado no provedor (registros SPF e
   DKIM no DNS), senão as mensagens caem no spam. A conexão exige TLS (`enable_starttls`).
+- **Stripe** (sempre em modo de teste: a aplicação não sobe com chave `_live_`): defina
+  `STRIPE_SECRET_KEY` com uma chave **restrita** de teste e crie, no painel do Stripe (na
+  sandbox), um *endpoint* de webhook para `https://<APP_HOST>/webhooks/stripe` com os eventos
+  `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+  `checkout.session.expired` e `checkout.session.async_payment_failed`. O segredo de
+  assinatura desse endpoint (`whsec_...`) vai em `STRIPE_WEBHOOK_SECRET` (é outro, e não o do
+  `stripe listen` de desenvolvimento).
 - Mantenha o log em `info` (o padrão). Em `debug`, o Rails escreve o corpo inteiro de cada
   e-mail no log, inclusive os links com token.
 - O Caddy precisa falar com a aplicação por uma **rede privada** do Docker. O Rails só confia
@@ -77,3 +84,5 @@ mercado-gil.duckdns.org   { reverse_proxy mercadolite-app:3000 }
 - [ ] HTTPS funcionando (cadeado no navegador, sem aviso)
 - [ ] Backup do banco agendado (cron) e, idealmente, enviado para storage externo
 - [ ] E-mail de confirmação chegando na caixa de entrada (não no spam) com link `https://`
+- [ ] Compra de teste (cartão `4242 4242 4242 4242`) terminando em "Pago", com o webhook
+      respondido com 200 no painel do Stripe

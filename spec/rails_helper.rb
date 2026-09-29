@@ -6,6 +6,10 @@ require_relative "../config/environment"
 # Trava de segurança: os testes apagam dados, então nunca podem rodar contra produção.
 abort("O Rails está em modo produção!") if Rails.env.production?
 require "rspec/rails"
+# WebMock intercepta todo HTTP de saída: nenhum teste chama a API do Stripe (ou qualquer
+# outra) de verdade. Uma chamada não prevista no teste vira erro, e não uma ida à internet.
+require "webmock/rspec"
+WebMock.disable_net_connect!(allow_localhost: true)
 
 # Carrega os arquivos de apoio (helpers de teste) em spec/support.
 Rails.root.glob("spec/support/**/*.rb").sort_by(&:to_s).each { |f| require f }

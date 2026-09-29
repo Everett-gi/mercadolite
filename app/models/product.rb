@@ -13,6 +13,8 @@ class Product < ApplicationRecord
   has_one :inventory, dependent: :destroy
   # Produto que está em algum carrinho não pode ser apagado (desative com active: false).
   has_many :cart_items, dependent: :restrict_with_error
+  # Produto já vendido não pode ser apagado (o banco também impede): desative-o.
+  has_many :order_items, dependent: :restrict_with_error
 
   # Imagens guardadas pelo Active Storage (tabelas active_storage_*), com duas variantes
   # nomeadas. As variantes são geradas pela libvips na primeira vez que são pedidas.

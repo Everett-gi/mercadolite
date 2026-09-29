@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_29_092327) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_29_120002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "unaccent"
@@ -71,6 +71,40 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_092327) do
     t.check_constraint "quantity >= 0", name: "inventories_quantity_non_negative"
   end
 
+  create_table "order_items", force: :cascade do |t|
+    t.bigint "order_id", null: false
+    t.bigint "product_id", null: false
+    t.string "product_name", limit: 120, null: false
+    t.integer "unit_price_cents", null: false
+    t.integer "quantity", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["order_id", "product_id"], name: "index_order_items_on_order_id_and_product_id", unique: true
+    t.index ["product_id"], name: "index_order_items_on_product_id"
+    t.check_constraint "quantity >= 1 AND quantity <= 10", name: "order_items_quantity_range"
+    t.check_constraint "unit_price_cents > 0 AND unit_price_cents <= 100000000", name: "order_items_price_range"
+  end
+
+  create_table "orders", force: :cascade do |t|
+    t.bigint "user_id"
+    t.string "status", default: "pending", null: false
+    t.integer "total_cents", null: false
+    t.string "currency", default: "brl", null: false
+    t.string "stripe_checkout_session_id"
+    t.string "stripe_payment_intent_id"
+    t.datetime "paid_at"
+    t.datetime "canceled_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["stripe_checkout_session_id"], name: "index_orders_on_stripe_checkout_session_id", unique: true
+    t.index ["stripe_payment_intent_id"], name: "index_orders_on_stripe_payment_intent_id", unique: true
+    t.index ["user_id"], name: "index_orders_on_user_id"
+    t.check_constraint "(status::text <> ALL (ARRAY['paid'::character varying, 'shipped'::character varying]::text[])) OR paid_at IS NOT NULL", name: "orders_paid_has_date"
+    t.check_constraint "currency::text = 'brl'::text", name: "orders_currency_brl"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'paid'::character varying, 'shipped'::character varying, 'canceled'::character varying]::text[])", name: "orders_status_valid"
+    t.check_constraint "total_cents > 0", name: "orders_total_positive"
+  end
+
   create_table "products", force: :cascade do |t|
     t.bigint "vendor_id", null: false
     t.string "name", limit: 120, null: false
@@ -82,6 +116,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_092327) do
     t.index ["active", "created_at"], name: "index_products_on_active_and_created_at"
     t.index ["vendor_id"], name: "index_products_on_vendor_id"
     t.check_constraint "price_cents > 0 AND price_cents <= 100000000", name: "products_price_cents_range"
+  end
+
+  create_table "stripe_events", force: :cascade do |t|
+    t.string "event_id", null: false
+    t.string "event_type", null: false
+    t.datetime "created_at", null: false
+    t.index ["event_id"], name: "index_stripe_events_on_event_id", unique: true
   end
 
   create_table "users", force: :cascade do |t|
@@ -119,5 +160,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_092327) do
   add_foreign_key "cart_items", "products"
   add_foreign_key "carts", "users", on_delete: :cascade
   add_foreign_key "inventories", "products"
+  add_foreign_key "order_items", "orders", on_delete: :cascade
+  add_foreign_key "order_items", "products"
+  add_foreign_key "orders", "users", on_delete: :nullify
   add_foreign_key "products", "vendors"
 end

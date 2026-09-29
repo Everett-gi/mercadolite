@@ -21,10 +21,25 @@
       <p class="text-xs text-stone-500">
         Preços conferidos agora, direto do catálogo. Itens indisponíveis ficam fora do subtotal.
       </p>
-      <button type="button" disabled class="w-full cursor-not-allowed rounded-md bg-stone-300 px-4 py-2 text-sm font-medium text-stone-600">
-        Finalizar compra
-      </button>
-      <p class="text-xs text-stone-500">O checkout (com login e Stripe em modo teste) chega na fase 3.</p>
+      <% if !@lines.all?(&:purchasable?) %>
+        <p class="text-sm text-amber-700">Ajuste os itens indisponíveis acima para finalizar a compra.</p>
+      <% elsif user_signed_in? %>
+        <%# data-turbo=false: um envio normal do navegador. O Turbo envia formulários com
+            fetch(), e o fetch tentaria seguir o redirecionamento para o Stripe: a CSP
+            (connect-src 'self') barra, e o comprador ficaria parado no carrinho
+            (conferido no Chromium). %>
+        <%= button_to "Finalizar compra", checkout_path, method: :post,
+              form: { data: { turbo: false } },
+              class: "w-full rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800" %>
+        <p class="text-xs text-stone-500">
+          Você vai para a página de pagamento do Stripe, em <strong>modo de teste</strong>: use o
+          cartão 4242 4242 4242 4242, qualquer data futura e qualquer CVC.
+        </p>
+      <% else %>
+        <%= link_to "Entre para finalizar a compra", new_user_session_path,
+              class: "block w-full rounded-md bg-emerald-700 px-4 py-2 text-center text-sm font-medium text-white hover:bg-emerald-800" %>
+        <p class="text-xs text-stone-500">O seu carrinho continua aqui depois do login.</p>
+      <% end %>
     </aside>
   </div>
 <% end %>
