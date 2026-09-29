@@ -136,6 +136,10 @@ bin/ci                               # tudo o que o CI roda
 - **Rodar comandos com locale US-ASCII quebra o `rails new`/geradores** (o `.gitignore` tem
   UTF-8): use `LANG=C.UTF-8`.
 - **`Integer("08")` levanta erro (octal)**: use `Integer(texto, 10)` ou valide antes.
+- **`db:prepare` carrega os seeds sempre que CRIA o banco principal, em qualquer ambiente**
+  (teste no CI, produção no primeiro deploy via `bin/docker-entrypoint`). Por isso os seeds
+  são um *no-op* fora do desenvolvimento (com `return`, nunca `abort`), com teste em
+  `spec/db/seeds_spec.rb`.
 
 ## Como começar (feito na fase 1)
 

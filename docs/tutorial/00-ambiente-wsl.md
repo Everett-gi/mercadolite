@@ -299,7 +299,8 @@ docker compose ps          # o serviço "db" deve aparecer como "healthy"
 # 3. Gems
 bundle install
 
-# 4. Cria os bancos, aplica as migrations e carrega os dados de exemplo
+# 4. Cria os bancos e aplica o schema. Ao CRIAR o banco, o db:prepare também carrega os
+#    dados de exemplo (seeds); o db:seed serve para recarregá-los depois (é idempotente).
 bin/rails db:prepare
 bin/rails db:seed
 

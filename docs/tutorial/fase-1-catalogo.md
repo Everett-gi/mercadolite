@@ -1038,7 +1038,7 @@ rápido e isola os testes entre si. A ordem dos testes também é **aleatória**
 ### Comandos
 
 ```bash
-bundle exec rspec                                  # tudo (110 exemplos, 1 pending, ~2 s)
+bundle exec rspec                                  # tudo (112 exemplos, 1 pending, ~2 s)
 bundle exec rspec spec/models/product_spec.rb      # um arquivo
 bundle exec rspec spec/models/product_spec.rb:42   # o exemplo da linha 42
 bundle exec rspec --format documentation           # um exemplo por linha, com os nomes
@@ -1086,7 +1086,11 @@ flowchart LR
 
 - **Idempotente:** `find_or_create_by!` procura antes de criar; rodar `bin/rails db:seed`
   duas vezes dá o mesmo resultado (verificado: "3 vendedores, 15 produtos" nas duas vezes).
-- **Recusado em produção:** `abort(...) if Rails.env.production?`.
+- **Só roda em desenvolvimento:** em qualquer outro ambiente, o arquivo imprime um aviso e
+  sai com `return` (um `return` no nível de cima de um arquivo encerra aquele arquivo). Por
+  que não um `abort`? Porque o `db:prepare` carrega os seeds **sempre que cria o banco
+  principal, em qualquer ambiente** — e isso quase derrubou o CI e o primeiro deploy. A
+  história está na seção 19.
 - **Sem downloads:** as imagens são quadros de cor gerados na hora pela libvips
   (`Vips::Image.black(800, 800).new_from_image(rgb)`).
 - Repare na desestruturação no bloco:
@@ -1097,7 +1101,7 @@ flowchart LR
 
 ## 19. O que os testes nos ensinaram nesta fase
 
-Quatro vezes nesta fase, rodar o código desmentiu uma suposição:
+Cinco vezes nesta fase, rodar o código desmentiu uma suposição:
 
 | Suposição | Realidade (medida) | O que mudou |
 |---|---|---|
@@ -1105,6 +1109,31 @@ Quatro vezes nesta fase, rodar o código desmentiu uma suposição:
 | "O `simple_format` escapa o HTML" | ele **sanitiza**: `<img src="x">` e `<b>` passam | `simple_format(h(...))` e um teste com essas tags |
 | "O Active Storage descobre o tipo real pelos bytes" | só quando há **assinatura**; texto puro passa com o tipo declarado | teste `pending` cobrando a correção na fase 5, e o limite documentado no `SECURITY.md` |
 | "Um atributo `:integer` transforma `"abc"` em `nil`" | vira **`0`** (e `"12abc"` vira 12) | validação `numericality` no `vendor_id` e a tabela da seção 9 |
+| "Os seeds só rodam quando alguém chama `db:seed`" | o `db:prepare` roda os seeds ao **criar** o banco, em qualquer ambiente | seeds viram um *no-op* fora do desenvolvimento, e há um teste para isso (`spec/db/seeds_spec.rb`) |
+
+### O CI pegou um erro que tinha passado localmente
+
+No primeiro push, o job `test` do CI **falhou com 13 testes**, que aqui tinham passado. Os
+testes da busca encontravam produtos que não tinham criado, como "Caneca de cerâmica
+esmaltada" — um produto dos **seeds**. A causa, lida no código do Rails
+(`ActiveRecord::Tasks::DatabaseTasks#prepare_all`): o `db:prepare` carrega os seeds sempre
+que **cria** o banco principal, em qualquer ambiente. No CI, o banco de teste nasce do zero a
+cada execução, e os seeds o enchiam de produtos. Aqui, o banco de teste tinha sido criado
+quando os seeds ainda estavam vazios, e por isso o problema não aparecia.
+
+Reproduzimos a falha localmente (apagando o banco de teste e rodando `RAILS_ENV=test
+bin/rails db:prepare`: 15 produtos no banco e as mesmas 13 falhas), e aí veio o susto maior. O
+`bin/docker-entrypoint` roda `db:prepare` em **produção** no primeiro deploy, e os seeds
+tinham `abort(...) if Rails.env.production?`. Testamos: o `db:prepare` de produção terminava
+com **código de saída 1**, o que derrubaria o container na primeira subida.
+
+A correção foi na raiz, e não no CI: fora do desenvolvimento, os seeds imprimem um aviso e
+saem sem erro. Duas lições:
+
+1. **É para isso que o CI existe:** uma máquina limpa, sobre o commit exato, sem o estado
+   acumulado da sua máquina (o mesmo que aconteceu no PwnCheck).
+2. **Um código que "nunca roda em produção" roda, sim**, se alguma tarefa automática o
+   chamar. Leia o que as ferramentas fazem por baixo antes de apostar nisso.
 
 É a mesma lição do PwnCheck: **testes de funcionalidade não protegem propriedades de
 segurança**, e comentários podem mentir. Garantia de segurança importante precisa de um
@@ -1117,7 +1146,7 @@ teste próprio.
 No Ubuntu (WSL), dentro de `~/dev/mercadolite`, com o banco de pé (`docker compose up -d`):
 
 ```bash
-bundle exec rspec          # esperado: 110 examples, 0 failures, 1 pending
+bundle exec rspec          # esperado: 112 examples, 0 failures, 1 pending
 bin/rubocop                # esperado: no offenses detected
 bin/brakeman -q            # esperado: No warnings found
 bin/dev                    # e abra http://localhost:3000
