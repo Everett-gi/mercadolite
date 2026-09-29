@@ -90,6 +90,12 @@ RSpec.describe "Carrinho", type: :request do
       expect(CartItem.count).to eq(0)
     end
 
+    it "responde com redirect (HTML) a quem aceita qualquer formato, como o curl" do
+      add_to_cart(product, headers: { "Accept" => "*/*" })
+
+      expect(response).to redirect_to(cart_path)
+    end
+
     it "responde 400 quando faltam os parâmetros esperados" do
       post cart_items_path, params: { product_id: product.id }
 

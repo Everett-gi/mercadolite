@@ -59,22 +59,25 @@ class CartItemsController < ApplicationController
 
   # Resposta de sucesso ao adicionar. Com Turbo (formulário da página do produto), atualiza
   # o contador e o aviso sem sair da página; sem Turbo, redireciona para o carrinho.
+  #
+  # A ordem importa: quem aceita qualquer formato (Accept: */*, como o curl) recebe o
+  # PRIMEIRO declarado, então o HTML vem antes. O Turbo pede o stream explicitamente.
   def added(product, quantity)
     message = t(".added", count: quantity, product: product.name)
     respond_to do |format|
-      format.turbo_stream { flash.now[:notice] = message }
       format.html { redirect_to cart_path, notice: message }
+      format.turbo_stream { flash.now[:notice] = message }
     end
   end
 
   # Resposta de erro ao adicionar (quantidade inválida, estoque insuficiente...).
   def reject(message, product:)
     respond_to do |format|
+      format.html { redirect_to product_path(product), alert: message }
       format.turbo_stream do
         flash.now[:alert] = message
         render :create, status: :unprocessable_content
       end
-      format.html { redirect_to product_path(product), alert: message }
     end
   end
 end
