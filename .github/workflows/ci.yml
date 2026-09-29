@@ -1,67 +1,132 @@
+# CI do MercadoLite: scans de segurança, lint e testes a cada push/PR na main.
+#
+# Os quatro jobs rodam em paralelo, cada um numa máquina Ubuntu nova e limpa:
+#   scan_ruby -> Brakeman (análise estática) + bundler-audit (gems com CVE conhecida)
+#   scan_js   -> importmap audit (pacotes JavaScript com vulnerabilidade conhecida)
+#   lint      -> RuboCop (estilo e bugs prováveis)
+#   test      -> RSpec contra um PostgreSQL 16 de verdade
+# Todos BLOQUEIAM o merge se falharem: o projeto é novo, então problema se trata na hora.
 name: CI
 
 on:
-  pull_request:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  # Botão "Run workflow" na aba Actions: roda o CI na hora, sem precisar de um push.
+  workflow_dispatch:
+
+# Menor privilégio: o token do workflow só pode LER o repositório.
+permissions:
+  contents: read
 
 jobs:
   scan_ruby:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - name: Checkout do código
+        uses: actions/checkout@v7
 
-      - name: Set up Ruby
+      # Lê a versão do .ruby-version e instala as gems do Gemfile.lock (com cache).
+      - name: Configurar Ruby
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
 
-      - name: Scan for common Rails security vulnerabilities using static analysis
+      - name: Análise estática de segurança (Brakeman)
         run: bin/brakeman --no-pager
-      
-      - name: Scan for known security vulnerabilities in gems used
-        run: bin/bundler-audit
-      
+
+      # Atualiza a base de vulnerabilidades (ruby-advisory-db) antes de conferir as gems.
+      - name: Gems com vulnerabilidades conhecidas (bundler-audit)
+        run: bin/bundler-audit check --update
+
   scan_js:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - name: Checkout do código
+        uses: actions/checkout@v7
 
-      - name: Set up Ruby
+      - name: Configurar Ruby
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
 
-      - name: Scan for security vulnerabilities in JavaScript dependencies
+      - name: Pacotes JavaScript com vulnerabilidades conhecidas (importmap audit)
         run: bin/importmap audit
 
   lint:
     runs-on: ubuntu-latest
     env:
       RUBOCOP_CACHE_ROOT: tmp/rubocop
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
 
-      - name: Set up Ruby
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v7
+
+      - name: Configurar Ruby
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
 
-      - name: Prepare RuboCop cache
-        uses: actions/cache@v4
+      - name: Cache do RuboCop
+        uses: actions/cache@v6
         env:
-          DEPENDENCIES_HASH: ${{ hashFiles('.ruby-version', '**/.rubocop.yml', '**/.rubocop_todo.yml', 'Gemfile.lock') }}
+          DEPENDENCIES_HASH: ${{ hashFiles('.ruby-version', '**/.rubocop.yml', 'Gemfile.lock') }}
         with:
           path: ${{ env.RUBOCOP_CACHE_ROOT }}
           key: rubocop-${{ runner.os }}-${{ env.DEPENDENCIES_HASH }}-${{ github.ref_name == github.event.repository.default_branch && github.run_id || 'default' }}
           restore-keys: |
             rubocop-${{ runner.os }}-${{ env.DEPENDENCIES_HASH }}-
 
-      - name: Lint code for consistent style
+      - name: Lint (RuboCop)
         run: bin/rubocop -f github
 
+  test:
+    runs-on: ubuntu-latest
+
+    # Um PostgreSQL 16 de verdade, em container, só durante este job. As credenciais são
+    # descartáveis (o banco morre com o job), por isso podem ficar escritas aqui.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: mercadolite
+          POSTGRES_PASSWORD: mercadolite
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mercadolite"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      RAILS_ENV: test
+      DATABASE_HOST: localhost
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: mercadolite
+      DATABASE_PASSWORD: mercadolite
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v7
+
+      # libvips: gera as miniaturas das imagens (Active Storage + image_processing).
+      - name: Instalar bibliotecas do sistema
+        run: sudo apt-get update -qq && sudo apt-get install --no-install-recommends -y libvips
+
+      - name: Configurar Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Compilar o CSS (Tailwind)
+        run: bin/rails tailwindcss:build
+
+      - name: Criar o banco de teste
+        run: bin/rails db:prepare
+
+      - name: Testes (RSpec)
+        run: bundle exec rspec
