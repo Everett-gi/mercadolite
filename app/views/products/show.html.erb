@@ -1,0 +1,45 @@
+<% content_for :title, @product.name %>
+
+<nav class="mb-6 text-sm">
+  <%= link_to "← Voltar para a vitrine", products_path, class: "text-stone-600 hover:underline" %>
+</nav>
+
+<article class="grid gap-8 md:grid-cols-2">
+  <div class="space-y-3">
+    <%= render "products/image", image: @product.images.first, variant: :large, loading: "eager",
+          alt: @product.name, css: "aspect-square w-full rounded-lg border border-stone-200 object-contain bg-white" %>
+
+    <% if @product.images.size > 1 %>
+      <ul class="grid grid-cols-4 gap-2">
+        <% @product.images.drop(1).each do |image| %>
+          <li><%= image_tag image.variant(:thumb), alt: @product.name, loading: "lazy",
+                    class: "aspect-square w-full rounded border border-stone-200 object-cover" %></li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+
+  <div class="space-y-4">
+    <h1 class="text-3xl font-semibold"><%= @product.name %></h1>
+    <p class="text-sm text-stone-500">Vendido por <strong><%= @product.vendor.name %></strong></p>
+    <p class="text-3xl font-bold"><%= price_tag(@product.price_cents) %></p>
+
+    <% if @product.in_stock? %>
+      <p class="text-sm text-emerald-700"><%= pluralize(@product.inventory.quantity, "unidade disponível", plural: "unidades disponíveis") %></p>
+    <% else %>
+      <p class="text-sm font-medium text-stone-700">Esgotado</p>
+    <% end %>
+
+    <%# simple_format transforma quebras de linha em <p>/<br>, mas SANITIZA em vez de
+        escapar: tira o que é perigoso (onerror, <script>) e mantém tags "seguras" como
+        <img> e <b>. A descrição não deve ter HTML nenhum, então escapamos tudo antes
+        com h(): "<img>" vira o texto &lt;img&gt;, e o simple_format só acrescenta os <p>. %>
+    <div class="space-y-3 text-stone-700">
+      <%= simple_format(h(@product.description)) %>
+    </div>
+
+    <p class="rounded-md bg-stone-100 p-3 text-sm text-stone-600">
+      O carrinho chega na próxima fase do projeto.
+    </p>
+  </div>
+</article>

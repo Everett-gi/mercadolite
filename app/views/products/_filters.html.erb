@@ -1,0 +1,52 @@
+<%# Formulário GET: os filtros viram parâmetros na URL (?q=...&sort=...), então uma busca
+    pode ser salva nos favoritos ou compartilhada. GET não altera nada no servidor. %>
+<aside>
+  <%= form_with url: products_path, method: :get, scope: nil, class: "space-y-5 rounded-lg border border-stone-200 bg-white p-4" do |form| %>
+    <div>
+      <%= form.label :q, "Buscar", class: "mb-1 block text-sm font-medium" %>
+      <%= form.search_field :q, value: search.q, maxlength: ProductSearch::MAX_QUERY_LENGTH,
+            placeholder: "Nome ou descrição",
+            class: "w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600" %>
+    </div>
+
+    <div>
+      <%= form.label :vendor_id, "Vendedor", class: "mb-1 block text-sm font-medium" %>
+      <%= form.select :vendor_id,
+            options_from_collection_for_select(vendors, :id, :name, search.vendor_id),
+            { include_blank: "Todos" },
+            class: "w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600" %>
+    </div>
+
+    <fieldset>
+      <legend class="mb-1 block text-sm font-medium">Preço (R$)</legend>
+      <div class="flex items-center gap-2">
+        <%= form.text_field :min_price, value: search.min_price, inputmode: "decimal", maxlength: 10,
+              placeholder: "mín.", "aria-label": "Preço mínimo",
+              class: "w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600" %>
+        <span class="text-stone-400">–</span>
+        <%= form.text_field :max_price, value: search.max_price, inputmode: "decimal", maxlength: 10,
+              placeholder: "máx.", "aria-label": "Preço máximo",
+              class: "w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600" %>
+      </div>
+    </fieldset>
+
+    <label class="flex items-center gap-2 text-sm">
+      <%= form.check_box :in_stock, { checked: search.in_stock, include_hidden: false }, "1" %>
+      Somente em estoque
+    </label>
+
+    <div>
+      <%= form.label :sort, "Ordenar por", class: "mb-1 block text-sm font-medium" %>
+      <%= form.select :sort, options_for_select(sort_options, search.sort),
+            {}, class: "w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600" %>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <%= form.submit "Filtrar", name: nil,
+            class: "rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800" %>
+      <% if search.filtered? %>
+        <%= link_to "Limpar filtros", products_path, class: "text-sm text-stone-600 underline" %>
+      <% end %>
+    </div>
+  <% end %>
+</aside>

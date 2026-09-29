@@ -1,0 +1,21 @@
+<%# Links "anterior/próxima". "query" vem do ProductSearch#to_params (já
+    normalizados), não da URL crua. %>
+<% if pagination.total_pages > 1 %>
+  <nav class="mt-8 flex items-center justify-between text-sm" aria-label="Paginação">
+    <% if pagination.previous_page %>
+      <%= link_to "← Anterior", products_path(query.merge(page: pagination.previous_page)),
+            rel: "prev", class: "rounded-md border border-stone-300 bg-white px-3 py-2 hover:bg-stone-100" %>
+    <% else %>
+      <span></span>
+    <% end %>
+
+    <span class="text-stone-500">Página <%= pagination.page %> de <%= pagination.total_pages %></span>
+
+    <% if pagination.next_page %>
+      <%= link_to "Próxima →", products_path(query.merge(page: pagination.next_page)),
+            rel: "next", class: "rounded-md border border-stone-300 bg-white px-3 py-2 hover:bg-stone-100" %>
+    <% else %>
+      <span></span>
+    <% end %>
+  </nav>
+<% end %>

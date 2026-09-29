@@ -40,12 +40,19 @@ mercado-gil.duckdns.org   { reverse_proxy mercadolite-app:3000 }
 
 ## Notas de Ruby (Rails)
 
-- Porta interna: **3000**.
-- Exige `RAILS_MASTER_KEY` (do `config/master.key`, que **não** vai pro Git) no `.env`
-  de produção, e `SECRET_KEY_BASE`.
-- Rode as migrations e o precompile de assets no deploy:
-  `bin/rails db:migrate && bin/rails assets:precompile`.
-- Use `RAILS_ENV=production` e `RAILS_SERVE_STATIC_FILES=true` (Caddy também pode servir).
+- Porta interna: **3000** (o `Dockerfile` gerado pelo Rails já faz `EXPOSE 3000` e roda como
+  usuário não-root).
+- O projeto **não usa** `config/credentials.yml.enc` nem `RAILS_MASTER_KEY`: todo segredo vem
+  de variável de ambiente. No `.env` de produção, defina pelo menos `SECRET_KEY_BASE` (gere
+  com `bin/rails secret`) e as variáveis do banco (`DATABASE_HOST`, `DATABASE_USERNAME`,
+  `DATABASE_PASSWORD`). Veja o `.env.example`.
+- As **migrations** rodam sozinhas: o `bin/docker-entrypoint` executa `bin/rails db:prepare`
+  antes de subir o servidor. O **precompile dos assets** acontece no build da imagem.
+- A imagem já define `RAILS_ENV=production`, e o Rails 8.1 serve os arquivos de `public/`
+  sozinho (`public_file_server.enabled` é `true` por padrão). O Caddy também pode servi-los.
+- Em produção o Rails usa 3 bancos no mesmo PostgreSQL: `mercadolite_production`,
+  `mercadolite_production_cache` (Solid Cache) e `mercadolite_production_queue` (Solid Queue).
+  O `db:prepare` cria os três.
 
 ## Checklist de deploy
 

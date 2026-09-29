@@ -1,0 +1,7 @@
+# Configuração do bundler-audit (bin/bundler-audit), que compara as versões do Gemfile.lock
+# com a base pública de vulnerabilidades de gems (ruby-advisory-db).
+#
+# Só ignore uma CVE depois de confirmar que ela NÃO se aplica a este projeto, e deixe o
+# motivo escrito ao lado. Exemplo:
+#   - CVE-2099-0001  # afeta só o adaptador MySQL; usamos PostgreSQL
+ignore: []

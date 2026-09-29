@@ -1,0 +1,26 @@
+# Serviços de DESENVOLVIMENTO: só o PostgreSQL. A aplicação roda direto no WSL
+# (bin/dev), para você ver e depurar tudo; em produção, ela vai para um container
+# (Dockerfile + docker-compose.prod.yml, na fase de deploy).
+#
+# Subir:   docker compose up -d        Parar:   docker compose down
+# Os dados ficam no volume "pgdata" e sobrevivem ao "down" (apague com "down -v").
+services:
+  db:
+    image: postgres:16
+    environment:
+      # O nome do usuário e a senha vêm do seu .env (as mesmas que a aplicação usa).
+      POSTGRES_USER: ${DATABASE_USERNAME:?defina DATABASE_USERNAME no .env}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?defina DATABASE_PASSWORD no .env}
+    ports:
+      # 127.0.0.1: a porta só é aberta para a própria máquina, nunca para a rede.
+      - "127.0.0.1:${DATABASE_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

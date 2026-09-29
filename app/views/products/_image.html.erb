@@ -1,0 +1,14 @@
+<%# Mostra uma variante da imagem ou, se o produto não tiver imagem, um marcador em SVG.
+    O SVG aqui é marcação escrita por nós (confiável), não um arquivo enviado.
+    loading: "lazy" adia o download até a imagem chegar perto da tela; a imagem
+    principal da página de produto usa "eager" (aparece logo de cara). %>
+<% loading = local_assigns.fetch(:loading, "lazy") %>
+<% if image %>
+  <%= image_tag image.variant(variant), alt:, class: css, loading: %>
+<% else %>
+  <div class="<%= css %> flex items-center justify-center bg-stone-100 text-stone-400" role="img" aria-label="<%= alt %> (sem imagem)">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-12 w-12" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A1.5 1.5 0 0 0 21.75 19.5V4.5A1.5 1.5 0 0 0 20.25 3H3.75A1.5 1.5 0 0 0 2.25 4.5v15A1.5 1.5 0 0 0 3.75 21Zm10.5-13.5h.008v.008h-.008V7.5Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+    </svg>
+  </div>
+<% end %>

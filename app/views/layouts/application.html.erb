@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <title><%= content_for?(:title) ? "#{yield(:title)} · MercadoLite" : "MercadoLite" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="application-name" content="MercadoLite">
+    <%# Token anti-CSRF (usado pelos formulários POST das próximas fases) e o nonce da CSP. %>
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body class="min-h-screen bg-stone-50 text-stone-900 antialiased">
+    <header class="border-b border-stone-200 bg-white">
+      <div class="mx-auto flex max-w-6xl items-center gap-6 px-4 py-4">
+        <%= link_to "MercadoLite", root_path, class: "text-xl font-bold tracking-tight text-emerald-700" %>
+        <span class="hidden text-sm text-stone-500 sm:inline">Marketplace de demonstração · pagamentos em modo teste</span>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-4 py-8">
+      <%= yield %>
+    </main>
+
+    <footer class="mx-auto max-w-6xl px-4 pb-8 text-xs text-stone-500">
+      Projeto de portfólio. Nenhum produto é vendido de verdade.
+    </footer>
+  </body>
+</html>
