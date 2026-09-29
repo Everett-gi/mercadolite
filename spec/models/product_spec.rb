@@ -1,4 +1,5 @@
 require "rails_helper"
+require "vips" # a ruby-vips é require: false no Gemfile (veja o comentário lá)
 
 RSpec.describe Product do
   let(:fixtures) { Rails.root.join("spec/fixtures/files") }

@@ -38,7 +38,10 @@ gem "image_processing", "~> 2.1"
 # A partir da image_processing 2.0, a ruby-vips virou dependência OPCIONAL: sem declará-la
 # aqui, ela some do bundle e as miniaturas quebram (só em produção, se não houver teste que
 # gere uma de verdade). O db/seeds.rb também a usa diretamente (require "vips").
-gem "ruby-vips", "~> 2.3"
+# require: false — carregar a ruby-vips já abre a biblioteca nativa libvips. Sem isso, o
+# Bundler.require do boot exigiria a libvips em QUALQUER máquina que suba a aplicação (até
+# num job de CI que só audita pacotes JS). Ela é carregada sob demanda, na primeira miniatura.
+gem "ruby-vips", "~> 2.3", require: false
 
 # Traduções prontas do Rails para pt-BR: mensagens de validação, datas, moeda.
 gem "rails-i18n", "~> 8.1"
