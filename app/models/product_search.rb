@@ -22,7 +22,8 @@ class ProductSearch
   DEFAULT_SORT = "recentes"
 
   # Atributos tipados: o Active Model converte a string da URL para o tipo declarado
-  # ("2" => 2, "1" => true, "abc" => nil para :integer).
+  # ("2" => 2, "1" => true). A conversão é TOLERANTE ("abc" => 0, "12abc" => 12, porque
+  # usa to_i): ela garante o tipo, mas não substitui a validação logo abaixo.
   attribute :q, :string
   attribute :vendor_id, :integer
   attribute :min_price, :string
@@ -32,6 +33,7 @@ class ProductSearch
   attribute :page, :integer, default: 1
 
   validates :q, length: { maximum: MAX_QUERY_LENGTH }
+  validates :vendor_id, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
   validates :sort, inclusion: { in: SORTS.keys }
   validate :prices_must_be_valid
 

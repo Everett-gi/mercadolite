@@ -8,6 +8,12 @@ RSpec.describe ProductSearch do
       expect(search).to have_attributes(vendor_id: 7, in_stock: true, page: 3)
     end
 
+    # Conversão não é validação: o tipo :integer usa to_i por baixo.
+    it "converte de forma tolerante (por isso também validamos)" do
+      expect(described_class.new(vendor_id: "abc").vendor_id).to eq(0)
+      expect(described_class.new(vendor_id: "12abc").vendor_id).to eq(12)
+    end
+
     it "usa os valores padrão quando o parâmetro não vem" do
       expect(described_class.new).to have_attributes(sort: "recentes", page: 1, in_stock: false)
     end
@@ -19,6 +25,15 @@ RSpec.describe ProductSearch do
 
       expect(search).not_to be_valid
       expect(search.errors[:q]).to be_present
+    end
+
+    [ "abc", "0", "-1" ].each do |invalid|
+      it "recusa vendedor #{invalid.inspect}" do
+        search = described_class.new(vendor_id: invalid)
+
+        expect(search).not_to be_valid
+        expect(search.errors[:vendor_id]).to include("deve ser maior que 0")
+      end
     end
 
     it "só aceita ordenações da lista fechada" do
