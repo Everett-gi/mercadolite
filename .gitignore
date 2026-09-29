@@ -5,7 +5,7 @@
 *.key
 *.pem
 
-# Rails
+# Rails: dependências, logs, arquivos temporários e uploads locais
 /.bundle
 /log/*
 !/log/.keep
@@ -16,6 +16,10 @@
 /public/assets
 /node_modules
 /coverage
+
+# Rails: CSS gerado pelo Tailwind (é recompilado a partir de app/assets/tailwind)
+/app/assets/builds/*
+!/app/assets/builds/.keep
 
 # IDE / Sistema Operacional
 .idea/
