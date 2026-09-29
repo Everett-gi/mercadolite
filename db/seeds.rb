@@ -3,7 +3,16 @@
 # Idempotente: rodar duas vezes não duplica nada (find_or_create_by! procura antes de
 # criar). As imagens são geradas aqui mesmo com a libvips (um quadro de cor sólida), para
 # não depender de arquivos baixados da internet.
-abort("Os seeds são só para desenvolvimento.") if Rails.env.production?
+#
+# Atenção: o db:prepare roda este arquivo sempre que CRIA o banco principal, em qualquer
+# ambiente — o de teste no CI e o de produção no primeiro deploy (bin/docker-entrypoint).
+# Fora do desenvolvimento ele não faz nada: os testes precisam de banco vazio, e a produção
+# não pode receber produtos de mentira. E nada de "abort" aqui: ele faria o db:prepare
+# falhar e derrubaria o container no primeiro deploy.
+unless Rails.env.development?
+  puts "Seeds de demonstração ignorados (ambiente: #{Rails.env})."
+  return
+end
 
 require "vips"
 
