@@ -5,7 +5,7 @@
 > [Everett-gi/Projetos-e-ideias](https://github.com/Everett-gi/Projetos-e-ideias). Referências de qualidade:
 > [DocSage](https://github.com/Everett-gi/docsage) e [PwnCheck](https://github.com/Everett-gi/pwncheck)
 > (estrutura, testes, CI e as lições do modo tutorial).
-> **Status:** 🚧 em construção — fases 1 (catálogo), 2 (carrinho) e 3a (login) concluídas. Próxima: fase 3b (checkout Stripe + Pundit).
+> **Status:** 🚧 em construção — fases 1 (catálogo), 2 (carrinho) e 3 (3a login + 3b checkout Stripe) concluídas. Próxima: fase 4 (pedidos + estoque).
 
 ## Modo tutorial
 
@@ -42,8 +42,9 @@ pedidos com status e controle de estoque. Bom candidato a carro-chefe de Ruby.
 
 Ruby **4.0.7** · Rails **8.1.4** · PostgreSQL 16 · Hotwire · Tailwind · Active Storage (libvips) ·
 RSpec + FactoryBot · RuboCop (omakase) · Brakeman · bundler-audit · rails-i18n · dotenv ·
-Devise 5 + devise-i18n · Mailpit (e-mail de desenvolvimento, no docker-compose).
-Próximas fases: **Stripe** (test mode) · Pundit.
+Devise 5 + devise-i18n · Mailpit (e-mail de desenvolvimento, no docker-compose) · Pundit 2.5 ·
+gem `stripe` 19.6 (API `2026-08-26.dahlia`; só modo de teste) · WebMock (testes sem rede) ·
+Stripe CLI (`stripe listen`, em desenvolvimento).
 
 > **Versões:** escolhidas na fase 1 (estáveis em 29/09/2026) e registradas na lição
 > `docs/tutorial/fase-1-catalogo.md`. A versão do Ruby aparece em `.ruby-version` e no
@@ -53,7 +54,8 @@ Próximas fases: **Stripe** (test mode) · Pundit.
 
 - **Vendor** · **Product** (vendor, preço, imagens) · **Inventory** (product, quantidade)
 - **User** (Devise) · **Cart** (de visitante ou de um User) + **CartItem**
-- **Order** (status: pending|paid|shipped) + **OrderItem** (fase 3b)
+- **Order** (status: pending|paid|shipped|canceled) + **OrderItem** (nome e preço congelados)
+- **StripeEvent** (eventos de webhook já processados: só `event_id` único e tipo)
 
 ## Funcionalidades principais
 
@@ -76,8 +78,8 @@ pagamento; autorização de pedidos (comprador vê os seus); **validação de pr
    checkout por decisão do autor: todo pedido nasce com dono (anti-IDOR). Dividida em duas:
    - ✅ **3a — Login** (Devise, confirmação de e-mail, rate limit, carrinho da conta, LGPD)
      — lição: `docs/tutorial/fase-3a-login.md`
-   - **3b — Checkout** (Order + Pundit, Stripe Checkout com chave restrita, webhook com
-     assinatura verificada e idempotente)
+   - ✅ **3b — Checkout** (Order + Pundit, Stripe Checkout com chave restrita, webhook com
+     assinatura verificada e idempotente) — lição: `docs/tutorial/fase-3b-checkout.md`
 4. Pedidos + estoque (baixa no pagamento confirmado, com `SELECT ... FOR UPDATE`)
 5. Painel do vendedor (login de vendedor, CRUD de produtos, upload validado pelo conteúdo)
 6. Deploy (ver `docs/DEPLOY.md`)
@@ -110,7 +112,25 @@ pagamento; autorização de pedidos (comprador vê os seus); **validação de pr
   os jobs de e-mail não logam argumentos (o token ia para o log).
 - **LGPD (3a):** coleta mínima (e-mail + hash); aceite dos termos com data; exclusão da conta
   pelo titular (exige a senha); contas não confirmadas apagadas em 7 dias.
-- **Pundit só na 3b**, quando houver pedidos para autorizar.
+- **Checkout (3b):** Stripe Checkout **hospedado** (o cartão nunca passa pela loja). `Order.place`
+  cria o pedido do carrinho copiando nome e preço do banco para `order_items`; os itens enviados
+  ao Stripe saem do pedido. Um pedido novo por checkout; só cartão; página expira em 30 min;
+  falha da API → pedido cancelado. Chave de idempotência por pedido
+  (`mercadolite-order-<id>-checkout`). A URL devolvida precisa ser de `checkout.stripe.com`.
+- **Confirmação (3b):** só o Stripe confirma: webhook assinado ou `sessions.retrieve` na volta
+  (`/checkout/success`, que só acha pedidos do usuário). `confirm_payment!` confere sessão,
+  `payment_status`, valor e moeda, dentro de `with_lock`. `StripeEvent.process` grava o evento
+  (índice único) na MESMA transação do efeito. Todo evento verificado recebe 200 (senão o
+  Stripe reenvia por dias); assinatura inválida → 400; corpo > 64 KB → 413.
+- **Chaves do Stripe (3b):** só de teste (`StripeKeys.test_key?`; o boot falha com `_live_`),
+  de preferência restrita (`Checkout Sessions: Write`). Nos testes, valores fixos no
+  initializer e WebMock bloqueando a rede. Tempo máximo: 5 s para conectar, 20 s para ler.
+- **Pundit (3b):** negação por padrão (`ApplicationPolicy`), `policy_scope` + `authorize` (as duas
+  camadas, de propósito), `verify_authorized`/`verify_policy_scoped`, e
+  `Pundit::NotAuthorizedError` → 404 (não revela que o registro existe).
+- **LGPD (3b):** excluir a conta deixa os pedidos sem dono (`on_delete: :nullify`); ao Stripe vão
+  só o e-mail e os itens; `stripe_events` guarda só id e tipo; a chave `data` (o conteúdo dos
+  eventos) é filtrada do log.
 
 ## Mapa dos arquivos
 
@@ -143,14 +163,24 @@ pagamento; autorização de pedidos (comprador vê os seus); **validação de pr
 | `app/views/users/` | Telas e e-mails do Devise em português (`config.scoped_views = true`). |
 | `app/controllers/pages_controller.rb`, `app/views/pages/` | Termos de Uso (`/terms`) e Política de Privacidade (`/privacy`). |
 | `app/jobs/purge_unconfirmed_users_job.rb` | Apaga contas não confirmadas há mais de 7 dias (4h10 de Brasília). |
-| `spec/` | `lib/` (puras), `models/`, `helpers/`, `jobs/`, `db/`, `requests/` (XSS, SQL injection, CSP, CSRF ligado, IDOR, 429, login: enumeração, cookie copiado, rate limit por e-mail). `spec/support/forgery_protection.rb`: contexto "com proteção CSRF ligada". |
+| `app/models/order.rb`, `order_item.rb` | Pedido: `Order.place` (do carrinho, preço do banco), `confirm_payment!` e `cancel_checkout!` (idempotentes, com `with_lock`). |
+| `app/models/stripe_checkout.rb` | PORO da API do Stripe: `start` (cria a sessão, confere o host) e `sync` (consulta e confirma). |
+| `app/models/stripe_event.rb` | `StripeEvent.process(event)`: um evento uma vez só, na mesma transação do efeito. |
+| `lib/stripe_keys.rb` | **Função pura**: `test_key?` (`sk`/`rk` + letras + `_test_`) e `webhook_secret?` (`whsec_`). |
+| `config/initializers/stripe.rb` | Chaves do ambiente (fixas nos testes), recusa de chave de produção, timeouts. |
+| `app/policies/` | `ApplicationPolicy` (nega tudo) e `OrderPolicy` (dono vê e paga; escopo por usuário). |
+| `app/controllers/checkouts_controller.rb` | `POST /checkout` (pedido + redirecionamento 303 ao Stripe, `rate_limit` 5/min por conta) e `GET /checkout/success`. |
+| `app/controllers/orders_controller.rb`, `app/views/orders/` | "Meus pedidos" (`policy_scope`), com o status em português (`order_status_badge`). |
+| `app/controllers/stripe_webhooks_controller.rb` | `POST /webhooks/stripe` (`ActionController::API`: sem CSRF nem sessão); corpo cru, 64 KB, `construct_event`. |
+| `config/brakeman.ignore` | Falso positivo de redirecionamento (URL da API do Stripe, host conferido), com justificativa. |
+| `spec/` | `lib/` (puras), `models/`, `policies/`, `helpers/`, `jobs/`, `db/`, `requests/` (XSS, SQL injection, CSP, CSRF ligado, IDOR, 429, login: enumeração, cookie copiado, rate limit por e-mail; webhooks: assinatura, replay, idempotência, log). `spec/models/order_concurrency_spec.rb`: duas conexões reais (sem transação de teste). `spec/support/forgery_protection.rb`: contexto "com proteção CSRF ligada"; `spec/support/stripe_helpers.rb`: sessões e eventos assinados de mentira. |
 
 **Regras de arquitetura:**
 - Lógica pura (sem banco/HTTP/Rails) vai em `lib/`, com teste em `spec/lib/`.
 - Toda regra de integridade importante existe no modelo **e** no banco (CHECK/UNIQUE/FK).
 - Nada da URL vira estrutura de SQL: valores por placeholder/hash, nomes por allowlist.
 - Buscar sempre a partir do escopo permitido (`Product.active.find`,
-  `current_cart.items.find`, e na fase 3 `current_user.orders.find`).
+  `current_cart.items.find`, `policy_scope(Order).find`).
 - Toda garantia de segurança tem teste próprio, e um teste novo precisa ser visto falhando com
   o bug antes de ser aceito.
 
@@ -160,13 +190,14 @@ pagamento; autorização de pedidos (comprador vê os seus); **validação de pr
 docker compose up -d                 # PostgreSQL 16 + Mailpit (e-mails em http://localhost:8025)
 bin/rails db:prepare db:seed         # bancos + dados de exemplo (db:migrate depois de um git pull)
 bin/dev                              # servidor + Tailwind (http://localhost:3000)
+stripe listen --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.expired,checkout.session.async_payment_failed --forward-to localhost:3000/webhooks/stripe   # webhooks em dev (whsec_ → .env)
 bundle exec rspec                    # testes
 bin/rubocop                          # lint (o CI exige zero ofensas)
 bin/brakeman && bin/bundler-audit    # scans de segurança
 bin/ci                               # tudo o que o CI roda
 ```
 
-## Armadilhas conhecidas (descobertas na fase 1)
+## Armadilhas conhecidas (fases 1 a 3a)
 
 - **`config.permissions_policy` do Rails 8.1 emite o cabeçalho antigo `Feature-Policy`.** O
   `Permissions-Policy` é enviado via `default_headers` em `security_headers.rb`.
@@ -233,6 +264,43 @@ bin/ci                               # tudo o que o CI roda
   são um *no-op* fora do desenvolvimento (com `return`, nunca `abort`), com teste em
   `spec/db/seeds_spec.rb`.
 
+### Descobertas na fase 3b
+
+- **A chave restrita de uma sandbox criada pela Stripe CLI começa com `rkcs_test_`**, e não
+  `rk_test_`: por isso `StripeKeys::TEST_KEY` aceita `(sk|rk)[a-z]*_test_`.
+- **O `Stripe::StripeClient` ignora o `Stripe.api_base` global**: para outro servidor, passe
+  `api_base:` ao cliente.
+- **A gem do Stripe confia só no próprio bundle de CAs** (`lib/data/ca-certificates.crt`).
+  Atrás de um proxy que troca certificados, use `Stripe.ca_bundle_path`; nunca desligue a
+  verificação.
+- **CSP `form-action` vale também para o destino do redirecionamento** depois do envio (o
+  `POST /checkout` → `checkout.stripe.com`), e a mensagem do Chromium cita a URL de origem.
+- **O Turbo segue redirecionamentos com `fetch`**, e o `connect-src 'self'` barra o Stripe: o
+  botão do checkout usa `data-turbo=false` (não abra o `connect-src`).
+- **O helper de URL escapa `{CHECKOUT_SESSION_ID}`** (`%7B...%7D`): monte a `success_url` à mão.
+- **`redirect_to` para outro host levanta `OpenRedirectError`** (`action_on_open_redirect =
+  :raise`): use `allow_other_host: true` só depois de conferir o host.
+- **O Rails escreve no log o corpo JSON de toda requisição (nível `info`)**: o webhook levava
+  nome e CEP do comprador. `filter_parameters` tem `/\Adata\z/` (um filtro em texto, `:data`,
+  pegaria também `metadata`).
+- **Constante de `lib/` não existe num initializer** (autoload do Zeitwerk ainda desligado):
+  `NameError`. Use `Rails.application.config.after_initialize`.
+- **Tradução de enum:** `human_attribute_name("status.paid")` procura em
+  `activerecord.attributes.order/status.paid` (chave com barra).
+- **Uma violação de `CHECK` aborta a transação do PostgreSQL** (`current transaction is
+  aborted`): nos testes, um exemplo por violação.
+- **Corpo das chamadas à API do Stripe é formulário**: com `Rack::Utils.parse_nested_query`,
+  arrays chegam como hashes (`{"0" => "card"}`).
+- **Dublês de API precisam ser realistas**: um stub que devolve sempre o mesmo id de sessão
+  quebra no índice único. Gere ids novos.
+- **Concorrência de verdade exige `self.use_transactional_tests = false`** (a transação do
+  teste esconde os dados da outra conexão) e limpeza manual no `after`. Reler (`reload`) não
+  substitui o `FOR UPDATE`: sem a trava, a outra conexão ainda não fez COMMIT.
+- **A tolerância da assinatura só recusa eventos velhos** (> 300 s); assinados no futuro são
+  aceitos (só quem tem o `whsec_` assina).
+- **Os rate limits valem para você no navegador** (5 checkouts/min, 5 logins/15 min por
+  e-mail): reiniciar o `bin/dev` zera os contadores (ficam na memória).
+
 ## Como começar (feito na fase 1)
 
 O esqueleto foi gerado com `rails new . --database=postgresql --css=tailwind --skip-git
@@ -241,11 +309,14 @@ O esqueleto foi gerado com `rails new . --database=postgresql --css=tailwind --s
 Dependabot, `.env.example`, `docker-compose.yml` (PostgreSQL de dev) e `SECURITY.md` já
 existem. Para rodar numa máquina nova, siga a Lição 00.
 
-**Para a fase 3b:** o autor já criou a conta do Stripe e está na sandbox ("Área restrita de
-MercadoLite"), sem ativar o modo de produção. Use só chaves de **teste**, de preferência uma
-**chave restrita** (`rk_test_`) com o mínimo de permissões, e só no `.env` (nunca no chat nem
-no Git). O webhook de confirmação de pagamento é o ponto crítico de segurança: valide a
-assinatura (`whsec_`, vindo da Stripe CLI em desenvolvimento) e trate a idempotência.
+**Stripe (desde a fase 3b):** o autor usa a sandbox "Área restrita de MercadoLite", sem ativar
+o modo de produção. Só chaves de **teste**, de preferência **restrita** (`rk_test_`, com
+`Checkout Sessions: Write`), e só no `.env` (nunca no chat nem no Git). Em desenvolvimento, os
+webhooks chegam pela Stripe CLI (`stripe listen`, que mostra o `whsec_`; instalação pelo `apt`
+na lição da fase 3b). **Para a fase 4:** a baixa de estoque entra na confirmação do pagamento
+(`Order#confirm_payment!`), na mesma transação, com `FOR UPDATE` na linha do estoque; e a
+conciliação de pedidos pendentes deve CONSULTAR o Stripe antes de cancelar (um webhook
+atrasado de um pedido pago encontraria o pedido já cancelado).
 
 ## Base de segurança do portfólio (Definition of Done)
 
