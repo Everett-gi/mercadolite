@@ -1,0 +1,54 @@
+# Traduções do MercadoLite. As mensagens padrão do Rails (validações, datas, moeda)
+# vêm da gem rails-i18n; aqui ficam só os nomes do nosso domínio e as nossas mensagens.
+pt-BR:
+  activerecord:
+    models:
+      vendor:
+        one: Vendedor
+        other: Vendedores
+      product:
+        one: Produto
+        other: Produtos
+      inventory:
+        one: Estoque
+        other: Estoques
+    attributes:
+      vendor:
+        name: Nome
+        description: Descrição
+      product:
+        name: Nome
+        description: Descrição
+        price_cents: Preço
+        active: Ativo
+        images: Imagens
+        vendor: Vendedor
+      inventory:
+        quantity: Quantidade
+    errors:
+      models:
+        product:
+          attributes:
+            images:
+              too_many: "podem ser no máximo %{count}"
+              invalid_type: "— %{filename} não é JPEG, PNG nem WebP"
+              too_large: "— %{filename} passa de %{max_mb} MB"
+
+  activemodel:
+    attributes:
+      product_search:
+        q: Busca
+        vendor_id: Vendedor
+        min_price: Preço mínimo
+        max_price: Preço máximo
+        in_stock: Somente em estoque
+        sort: Ordenação
+    errors:
+      models:
+        product_search:
+          attributes:
+            min_price:
+              invalid_price: "deve ser um valor como 49,90"
+            max_price:
+              invalid_price: "deve ser um valor como 49,90"
+              less_than_min_price: "não pode ser menor que o preço mínimo"
