@@ -5,7 +5,7 @@
 > [Everett-gi/Projetos-e-ideias](https://github.com/Everett-gi/Projetos-e-ideias). Referências de qualidade:
 > [DocSage](https://github.com/Everett-gi/docsage) e [PwnCheck](https://github.com/Everett-gi/pwncheck)
 > (estrutura, testes, CI e as lições do modo tutorial).
-> **Status:** 🚧 em construção — fase 1 concluída (catálogo). Próxima: fase 2 (carrinho).
+> **Status:** 🚧 em construção — fases 1 (catálogo) e 2 (carrinho) concluídas. Próxima: fase 3 (login + checkout Stripe).
 
 ## Modo tutorial
 
@@ -68,7 +68,8 @@ pagamento; autorização de pedidos (comprador vê os seus); **validação de pr
 
 1. ✅ Catálogo (produtos + imagens + busca/filtros/paginação)
    — lições: `docs/tutorial/00-ambiente-wsl.md`, `01-ruby-para-quem-vem-do-c.md`, `fase-1-catalogo.md`
-2. Carrinho (sessão em cookie, CSRF, `rate_limit`, preço sempre do banco)
+2. ✅ Carrinho (sessão em cookie, CSRF, `rate_limit`, preço sempre do banco, limpeza diária)
+   — lição: `docs/tutorial/fase-2-carrinho.md`
 3. **Login do comprador (Devise + Pundit)** + checkout com Stripe em modo teste
    (webhook com assinatura verificada e idempotente). O login veio para antes do checkout por
    decisão do autor: todo pedido nasce com dono (anti-IDOR).
@@ -87,8 +88,11 @@ pagamento; autorização de pedidos (comprador vê os seus); **validação de pr
   YARD (`@param`/`@return`) nos métodos públicos e testes. RBS/Steep ficou fora por ora.
 - **Dinheiro:** `Integer` em centavos no banco e no código; `BigDecimal` só para exibir.
 - **Sem Kamal/Thruster:** o deploy é Docker Compose + Caddy (porta interna 3000).
+- **Carrinho:** o id fica na sessão (cookie cifrado) e os itens no banco. `cart_items` **não
+  tem preço**: ele é lido do produto na hora. O estoque é **conferido**, não reservado, no
+  carrinho (a garantia vem no pagamento, fase 4). GET nunca cria carrinho.
 
-## Mapa dos arquivos (fase 1)
+## Mapa dos arquivos
 
 | Arquivo | Responsabilidade |
 |---|---|
@@ -102,20 +106,29 @@ pagamento; autorização de pedidos (comprador vê os seus); **validação de pr
 | `config/initializers/security_headers.rb` | `Permissions-Policy` moderno e `X-Frame-Options: DENY`. |
 | `config/locales/pt-BR.yml` | Nomes de modelos/atributos e mensagens de erro próprias. |
 | `db/seeds.rb` | Dados de exemplo idempotentes (imagens geradas com libvips). |
-| `spec/` | `lib/` (puras), `models/`, `helpers/`, `requests/` (inclui XSS, SQL injection, CSP). |
+| `lib/quantity.rb` | **Função pura** estrita: `Quantity.parse("3", max: 10) → 3`; qualquer coisa fora de `\A\d{1,3}\z` e 1..max → `nil`. |
+| `app/models/cart.rb`, `cart_item.rb` | Carrinho: `Cart#add` soma à linha existente (e trata a corrida no índice único); `CartItem` valida 1..10 e o estoque; subtotal com o preço atual. |
+| `app/controllers/concerns/current_cart.rb` | `current_cart` (só procura; GET nunca cria) e `current_cart!` (cria, nas ações que alteram). |
+| `app/controllers/carts_controller.rb`, `cart_items_controller.rb` | `GET /cart`; `POST/PATCH/DELETE /cart_items` com `params.expect`, `rate_limit` (30/min por IP) e anti-IDOR (`current_cart.items.find`). HTML primeiro no `respond_to`, depois Turbo Stream. |
+| `app/jobs/purge_abandoned_carts_job.rb` + `config/recurring.yml` | Apaga carrinhos parados há 30 dias, todo dia às 4h de Brasília (Solid Queue). |
+| `config/initializers/session_store.rb` | Cookie de sessão: 30 dias, `SameSite=Lax`, `Secure` em produção. |
+| `public/*.html` | Páginas de erro em português, incluindo a 429 do rate limit. |
+| `spec/` | `lib/` (puras), `models/`, `helpers/`, `jobs/`, `db/`, `requests/` (XSS, SQL injection, CSP, CSRF ligado, IDOR, 429). |
 
 **Regras de arquitetura:**
 - Lógica pura (sem banco/HTTP/Rails) vai em `lib/`, com teste em `spec/lib/`.
 - Toda regra de integridade importante existe no modelo **e** no banco (CHECK/UNIQUE/FK).
 - Nada da URL vira estrutura de SQL: valores por placeholder/hash, nomes por allowlist.
-- Buscar sempre a partir do escopo permitido (`Product.active.find`, e na fase 3
-  `current_user.orders.find`).
+- Buscar sempre a partir do escopo permitido (`Product.active.find`,
+  `current_cart.items.find`, e na fase 3 `current_user.orders.find`).
+- Toda garantia de segurança tem teste próprio, e um teste novo precisa ser visto falhando com
+  o bug antes de ser aceito.
 
 ## Comandos (bash, no Ubuntu/WSL, dentro de `~/dev/mercadolite`)
 
 ```bash
 docker compose up -d                 # PostgreSQL 16 de desenvolvimento
-bin/rails db:prepare db:seed         # bancos + dados de exemplo
+bin/rails db:prepare db:seed         # bancos + dados de exemplo (db:migrate depois de um git pull)
 bin/dev                              # servidor + Tailwind (http://localhost:3000)
 bundle exec rspec                    # testes
 bin/rubocop                          # lint (o CI exige zero ofensas)
@@ -136,6 +149,22 @@ bin/ci                               # tudo o que o CI roda
 - **Rodar comandos com locale US-ASCII quebra o `rails new`/geradores** (o `.gitignore` tem
   UTF-8): use `LANG=C.UTF-8`.
 - **`Integer("08")` levanta erro (octal)**: use `Integer(texto, 10)` ou valide antes.
+- **`rate_limit` usa o cache store resolvido quando a classe carrega.** Com o `:null_store`
+  (padrão do ambiente de teste), o limite não existe. Os testes usam `:memory_store`, limpo
+  antes de cada exemplo (sem limpar, os contadores vazam entre testes e as falhas mudam com a
+  ordem).
+- **Um comentário ERB (`<%# ... %>`) termina no primeiro `%>`**: não cite a tag de saída do
+  ERB dentro dele. Há teste que procura `%>` vazando no HTML.
+- **`respond_to`: quem aceita `*/*` (curl) recebe o primeiro formato declarado.** Deixe
+  `format.html` antes de `format.turbo_stream`.
+- **`build(:modelo)` não roda callbacks de criação:** um `Product` só construído não tem
+  `inventory`. Use `Product#stock_quantity` (nil → 0) e, nas fábricas,
+  `association ..., strategy: :create` quando o objeto precisar existir no banco.
+- **`recurring.yml` segue o `config.time_zone`:** "every day at 4am" é 4h de Brasília (07:00 UTC).
+- **`numericality: { in: 1..10 }` gera "deve estar em 1..10"**: prefira
+  `greater_than_or_equal_to`/`less_than_or_equal_to` (mensagens melhores no rails-i18n).
+- **Status 422 no Rack atual é `:unprocessable_content`** (`:unprocessable_entity` está
+  obsoleto e gera aviso).
 - **`db:prepare` carrega os seeds sempre que CRIA o banco principal, em qualquer ambiente**
   (teste no CI, produção no primeiro deploy via `bin/docker-entrypoint`). Por isso os seeds
   são um *no-op* fora do desenvolvimento (com `return`, nunca `abort`), com teste em
