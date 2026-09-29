@@ -35,8 +35,9 @@ class Product < ApplicationRecord
   scope :in_stock, -> { joins(:inventory).where(inventories: { quantity: 1.. }) }
 
   # Busca por texto no nome e na descrição, sem diferenciar maiúsculas (ILIKE) nem
-  # acentos (unaccent). O termo vai como PARÂMETRO LIGADO (:pattern): o banco o trata
-  # sempre como dado, nunca como SQL, então não há como injetar SQL por aqui.
+  # acentos (unaccent). O termo entra por um PLACEHOLDER (:pattern), nunca por
+  # interpolação: o Active Record escapa o valor e o insere como literal de texto
+  # ('O''Brien'), então aspas digitadas pela pessoa não fecham a string nem viram SQL.
   # sanitize_sql_like escapa os curingas do LIKE (% e _) digitados pela pessoa.
   #
   # @param term [String]
