@@ -54,7 +54,14 @@ mercado-gil.duckdns.org   { reverse_proxy mercadolite-app:3000 }
   `mercadolite_production_cache` (Solid Cache) e `mercadolite_production_queue` (Solid Queue).
   O `db:prepare` cria os três.
 - Defina `SOLID_QUEUE_IN_PUMA=true` para o Puma rodar os workers do Solid Queue. Sem eles,
-  os jobs agendados (como a limpeza diária de carrinhos abandonados) não rodam.
+  os jobs agendados (a limpeza diária de carrinhos abandonados e de contas nunca
+  confirmadas) e o envio dos e-mails não acontecem.
+- **E-mail** (confirmação de conta, redefinição de senha): defina `APP_HOST` (o domínio
+  público, usado nos links), `MAILER_FROM` e as variáveis `SMTP_*` de um provedor de e-mail
+  transacional. O remetente precisa ser de um domínio autorizado no provedor (registros SPF e
+  DKIM no DNS), senão as mensagens caem no spam. A conexão exige TLS (`enable_starttls`).
+- Mantenha o log em `info` (o padrão). Em `debug`, o Rails escreve o corpo inteiro de cada
+  e-mail no log, inclusive os links com token.
 - O Caddy precisa falar com a aplicação por uma **rede privada** do Docker. O Rails só confia
   no `X-Forwarded-For` (o IP real do cliente) vindo de IPs privados, e o rate limit do
   carrinho é por IP. Se o Rails enxergar só o IP do Caddy, todos os clientes dividem o
@@ -69,3 +76,4 @@ mercado-gil.duckdns.org   { reverse_proxy mercadolite-app:3000 }
 - [ ] `docker compose -f docker-compose.prod.yml up -d --build` sem erros
 - [ ] HTTPS funcionando (cadeado no navegador, sem aviso)
 - [ ] Backup do banco agendado (cron) e, idealmente, enviado para storage externo
+- [ ] E-mail de confirmação chegando na caixa de entrada (não no spam) com link `https://`

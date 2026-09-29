@@ -5,7 +5,7 @@
 > [Everett-gi/Projetos-e-ideias](https://github.com/Everett-gi/Projetos-e-ideias). Referências de qualidade:
 > [DocSage](https://github.com/Everett-gi/docsage) e [PwnCheck](https://github.com/Everett-gi/pwncheck)
 > (estrutura, testes, CI e as lições do modo tutorial).
-> **Status:** 🚧 em construção — fases 1 (catálogo) e 2 (carrinho) concluídas. Próxima: fase 3 (login + checkout Stripe).
+> **Status:** 🚧 em construção — fases 1 (catálogo), 2 (carrinho) e 3a (login) concluídas. Próxima: fase 3b (checkout Stripe + Pundit).
 
 ## Modo tutorial
 
@@ -41,8 +41,9 @@ pedidos com status e controle de estoque. Bom candidato a carro-chefe de Ruby.
 ## Stack
 
 Ruby **4.0.7** · Rails **8.1.4** · PostgreSQL 16 · Hotwire · Tailwind · Active Storage (libvips) ·
-RSpec + FactoryBot · RuboCop (omakase) · Brakeman · bundler-audit · rails-i18n · dotenv.
-Próximas fases: **Stripe** (test mode) · Devise · Pundit.
+RSpec + FactoryBot · RuboCop (omakase) · Brakeman · bundler-audit · rails-i18n · dotenv ·
+Devise 5 + devise-i18n · Mailpit (e-mail de desenvolvimento, no docker-compose).
+Próximas fases: **Stripe** (test mode) · Pundit.
 
 > **Versões:** escolhidas na fase 1 (estáveis em 29/09/2026) e registradas na lição
 > `docs/tutorial/fase-1-catalogo.md`. A versão do Ruby aparece em `.ruby-version` e no
@@ -51,7 +52,8 @@ Próximas fases: **Stripe** (test mode) · Devise · Pundit.
 ## Modelos
 
 - **Vendor** · **Product** (vendor, preço, imagens) · **Inventory** (product, quantidade)
-- **Cart** + **CartItem** · **Order** (status: pending|paid|shipped) + **OrderItem**
+- **User** (Devise) · **Cart** (de visitante ou de um User) + **CartItem**
+- **Order** (status: pending|paid|shipped) + **OrderItem** (fase 3b)
 
 ## Funcionalidades principais
 
@@ -70,9 +72,12 @@ pagamento; autorização de pedidos (comprador vê os seus); **validação de pr
    — lições: `docs/tutorial/00-ambiente-wsl.md`, `01-ruby-para-quem-vem-do-c.md`, `fase-1-catalogo.md`
 2. ✅ Carrinho (sessão em cookie, CSRF, `rate_limit`, preço sempre do banco, limpeza diária)
    — lição: `docs/tutorial/fase-2-carrinho.md`
-3. **Login do comprador (Devise + Pundit)** + checkout com Stripe em modo teste
-   (webhook com assinatura verificada e idempotente). O login veio para antes do checkout por
-   decisão do autor: todo pedido nasce com dono (anti-IDOR).
+3. Login do comprador + checkout com Stripe em modo teste. O login veio para antes do
+   checkout por decisão do autor: todo pedido nasce com dono (anti-IDOR). Dividida em duas:
+   - ✅ **3a — Login** (Devise, confirmação de e-mail, rate limit, carrinho da conta, LGPD)
+     — lição: `docs/tutorial/fase-3a-login.md`
+   - **3b — Checkout** (Order + Pundit, Stripe Checkout com chave restrita, webhook com
+     assinatura verificada e idempotente)
 4. Pedidos + estoque (baixa no pagamento confirmado, com `SELECT ... FOR UPDATE`)
 5. Painel do vendedor (login de vendedor, CRUD de produtos, upload validado pelo conteúdo)
 6. Deploy (ver `docs/DEPLOY.md`)
@@ -91,6 +96,21 @@ pagamento; autorização de pedidos (comprador vê os seus); **validação de pr
 - **Carrinho:** o id fica na sessão (cookie cifrado) e os itens no banco. `cart_items` **não
   tem preço**: ele é lido do produto na hora. O estoque é **conferido**, não reservado, no
   carrinho (a garantia vem no pagamento, fase 4). GET nunca cria carrinho.
+- **Carrinho com dono (3a):** logado, o carrinho é o da conta (`carts.user_id`, único); no
+  login, um gancho do Warden chama `Cart.claim` (o de visitante vira da conta ou é somado ao
+  dela). A sessão de visitante só alcança `Cart.guest` (sem dono).
+- **Senha (3a):** bcrypt custo 12; 15 a 72 caracteres **e** até 72 bytes; `PasswordPolicy`
+  recusa senhas previsíveis; sem regras de composição (NIST SP 800-63B-4).
+- **Revogação de sessão (3a):** `User#authenticatable_salt` inclui um `session_token`, trocado
+  em todo logout (gancho `before_logout`, também na expiração). "Sair" encerra todas as
+  sessões da conta. Timeout de 2 h sem uso.
+- **Força bruta (3a):** `rate_limit` por IP e por e-mail (chave SHA-256), e não o `lockable`
+  (que deixaria travar a conta dos outros). Modo `paranoid` contra enumeração.
+- **E-mails (3a):** `deliver_later` depois do COMMIT (`ActiveRecord.after_all_transactions_commit`);
+  os jobs de e-mail não logam argumentos (o token ia para o log).
+- **LGPD (3a):** coleta mínima (e-mail + hash); aceite dos termos com data; exclusão da conta
+  pelo titular (exige a senha); contas não confirmadas apagadas em 7 dias.
+- **Pundit só na 3b**, quando houver pedidos para autorizar.
 
 ## Mapa dos arquivos
 
@@ -113,7 +133,17 @@ pagamento; autorização de pedidos (comprador vê os seus); **validação de pr
 | `app/jobs/purge_abandoned_carts_job.rb` + `config/recurring.yml` | Apaga carrinhos parados há 30 dias, todo dia às 4h de Brasília (Solid Queue). |
 | `config/initializers/session_store.rb` | Cookie de sessão: 30 dias, `SameSite=Lax`, `Secure` em produção. |
 | `public/*.html` | Páginas de erro em português, incluindo a 429 do rate limit. |
-| `spec/` | `lib/` (puras), `models/`, `helpers/`, `jobs/`, `db/`, `requests/` (XSS, SQL injection, CSP, CSRF ligado, IDOR, 429). |
+| `app/models/user.rb` | Conta (Devise): senha 15..72 bytes, aceite dos termos, `session_token` no sal da sessão, e-mails por job depois do commit. |
+| `lib/password_policy.rb` | **Função pura**: `PasswordPolicy.weakness(senha, email:)` → `:repetitive`, `:service_name`, `:email` ou `nil`. |
+| `config/initializers/devise.rb` | Só as opções usadas, comentadas: paranoid, custo, tamanho da senha, validades, timeout. |
+| `config/initializers/warden_hooks.rb` | Ganchos: no login, `Cart.claim`; antes do logout, `end_all_sessions!`. |
+| `config/initializers/action_mailer.rb` | `MailDeliveryJob.log_arguments = false` (tokens fora do log). |
+| `app/controllers/users/` | Controllers do Devise herdados, com `rate_limit` por IP e por e-mail; `registrations#destroy` exige a senha. |
+| `app/controllers/concerns/email_rate_limit.rb` | Chave do limite por e-mail (SHA-256 do e-mail normalizado). |
+| `app/views/users/` | Telas e e-mails do Devise em português (`config.scoped_views = true`). |
+| `app/controllers/pages_controller.rb`, `app/views/pages/` | Termos de Uso (`/terms`) e Política de Privacidade (`/privacy`). |
+| `app/jobs/purge_unconfirmed_users_job.rb` | Apaga contas não confirmadas há mais de 7 dias (4h10 de Brasília). |
+| `spec/` | `lib/` (puras), `models/`, `helpers/`, `jobs/`, `db/`, `requests/` (XSS, SQL injection, CSP, CSRF ligado, IDOR, 429, login: enumeração, cookie copiado, rate limit por e-mail). `spec/support/forgery_protection.rb`: contexto "com proteção CSRF ligada". |
 
 **Regras de arquitetura:**
 - Lógica pura (sem banco/HTTP/Rails) vai em `lib/`, com teste em `spec/lib/`.
@@ -127,7 +157,7 @@ pagamento; autorização de pedidos (comprador vê os seus); **validação de pr
 ## Comandos (bash, no Ubuntu/WSL, dentro de `~/dev/mercadolite`)
 
 ```bash
-docker compose up -d                 # PostgreSQL 16 de desenvolvimento
+docker compose up -d                 # PostgreSQL 16 + Mailpit (e-mails em http://localhost:8025)
 bin/rails db:prepare db:seed         # bancos + dados de exemplo (db:migrate depois de um git pull)
 bin/dev                              # servidor + Tailwind (http://localhost:3000)
 bundle exec rspec                    # testes
@@ -170,6 +200,34 @@ bin/ci                               # tudo o que o CI roda
   atualização *major* do Dependabot antes do merge.
 - **Status 422 no Rack atual é `:unprocessable_content`** (`:unprocessable_entity` está
   obsoleto e gera aviso).
+- **O bcrypt ignora, em silêncio, o que passa de 72 BYTES da senha** (e o Devise aceitaria
+  128 caracteres). O `User` limita a 72 bytes; acento conta 2.
+- **O Active Job escreve os argumentos dos jobs no log**, e o token do link de redefinição de
+  senha é um deles. `ActionMailer::MailDeliveryJob.log_arguments = false`, com teste.
+- **`validates ..., acceptance: true` é pulada quando o campo vem `nil`**: use
+  `acceptance: { allow_nil: false }`.
+- **O Rails 8.1 não espera o COMMIT para enfileirar jobs** (`enqueue_after_transaction_commit`
+  é `false`): use `ActiveRecord.after_all_transactions_commit { ... }`.
+- **O Devise carrega o `bcrypt` sob demanda:** spec que usa `BCrypt::` direto precisa de
+  `require "bcrypt"` (senão falha só em algumas ordens, como a semente 11802).
+- **`items.find_or_initialize_by` constrói pela associação:** uma linha recusada fica
+  pendurada, não salva, em `cart.items` em memória. Para montar sem sujar a lista, use
+  `CartItem.find_or_initialize_by(cart_id: id, ...)`.
+- **Dentro de um controller do Devise, `authenticate_user!` não faz nada** sem `force: true`.
+  Ações que exigem login ficam em controllers próprios.
+- **Um login que falha calcula 2 hashes bcrypt** (a tela é re-renderizada com um `User.new`
+  que recebe a senha). O Devise faz o hash **na atribuição** da senha: cada cadastro custa
+  ~250 ms de CPU, mesmo inválido.
+- **Timeout do Devise redireciona duas vezes:** para a página pedida (com o aviso) e, dela,
+  para o login.
+- **`localhost` e `127.0.0.1` têm cookies separados:** os links dos e-mails usam
+  `default_url_options` (`localhost:3000`). Teste no navegador sempre em `localhost`.
+- **Cada formulário tem o próprio token CSRF** (preso à ação): num teste, pegue o token do
+  formulário certo, não o primeiro da página.
+- **O token de confirmação do Devise fica no banco como está e não é apagado depois de usado**
+  (o de redefinição é HMAC e é apagado).
+- **`bin/rails server` sozinho não recompila o Tailwind:** use `bin/dev`, ou rode
+  `bin/rails tailwindcss:build` depois de criar classes novas nas views.
 - **`db:prepare` carrega os seeds sempre que CRIA o banco principal, em qualquer ambiente**
   (teste no CI, produção no primeiro deploy via `bin/docker-entrypoint`). Por isso os seeds
   são um *no-op* fora do desenvolvimento (com `return`, nunca `abort`), com teste em
@@ -183,9 +241,11 @@ O esqueleto foi gerado com `rails new . --database=postgresql --css=tailwind --s
 Dependabot, `.env.example`, `docker-compose.yml` (PostgreSQL de dev) e `SECURITY.md` já
 existem. Para rodar numa máquina nova, siga a Lição 00.
 
-**Para a fase 3:** use as **chaves de teste** do Stripe no `.env` — nunca as de produção. O
-webhook de confirmação de pagamento é o ponto crítico de segurança: valide a assinatura e
-trate a idempotência.
+**Para a fase 3b:** o autor já criou a conta do Stripe e está na sandbox ("Área restrita de
+MercadoLite"), sem ativar o modo de produção. Use só chaves de **teste**, de preferência uma
+**chave restrita** (`rk_test_`) com o mínimo de permissões, e só no `.env` (nunca no chat nem
+no Git). O webhook de confirmação de pagamento é o ponto crítico de segurança: valide a
+assinatura (`whsec_`, vindo da Stripe CLI em desenvolvimento) e trate a idempotência.
 
 ## Base de segurança do portfólio (Definition of Done)
 
