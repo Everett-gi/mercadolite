@@ -12,6 +12,12 @@ pt-BR:
       inventory:
         one: Estoque
         other: Estoques
+      cart:
+        one: Carrinho
+        other: Carrinhos
+      cart_item:
+        one: Item do carrinho
+        other: Itens do carrinho
     attributes:
       vendor:
         name: Nome
@@ -26,6 +32,9 @@ pt-BR:
         vendor: Vendedor
       inventory:
         quantity: Quantidade
+      cart_item:
+        quantity: Quantidade
+        product: Produto
     errors:
       models:
         product:
@@ -34,6 +43,14 @@ pt-BR:
               too_many: "podem ser no máximo %{count}"
               invalid_type: "— %{filename} não é JPEG, PNG nem WebP"
               too_large: "— %{filename} passa de %{max_mb} MB"
+        cart_item:
+          attributes:
+            product:
+              unavailable: "não está mais à venda"
+            quantity:
+              exceeds_stock:
+                one: "maior que o estoque (só resta %{count} unidade)"
+                other: "maior que o estoque (só restam %{count} unidades)"
 
   activemodel:
     attributes:

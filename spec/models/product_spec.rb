@@ -45,6 +45,14 @@ RSpec.describe Product do
       expect(product).not_to be_in_stock
     end
 
+    it "trata estoque ainda não criado (produto não gravado) como zero" do
+      product = build(:product)
+
+      expect(product.inventory).to be_nil
+      expect(product.stock_quantity).to eq(0)
+      expect(product).not_to be_in_stock
+    end
+
     it "está em estoque quando a quantidade é positiva" do
       expect(create(:product, stock: 3)).to be_in_stock
     end
