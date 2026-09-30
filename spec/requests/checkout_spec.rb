@@ -115,6 +115,16 @@ RSpec.describe "Checkout", type: :request do
       end
     end
 
+    it "sem a chave do Stripe configurada, avisa e não cria pedido" do
+      log_in(user)
+      add_to_cart(mug)
+      allow(StripeCheckout).to receive(:configured?).and_return(false)
+
+      expect { post checkout_path }.not_to change(Order, :count)
+      expect(response).to redirect_to(cart_path)
+      expect(flash[:alert]).to eq("O pagamento não está configurado neste servidor (falta a STRIPE_SECRET_KEY).")
+    end
+
     it "recusa carrinho vazio, sem chamar o Stripe" do
       log_in(user)
 

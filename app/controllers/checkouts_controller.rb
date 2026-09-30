@@ -18,10 +18,15 @@ class CheckoutsController < ApplicationController
 
   # POST /checkout
   def create
+    # Antes de criar o pedido: sem a chave, ele ficaria pendente para sempre.
+    unless StripeCheckout.configured?
+      skip_authorization # nenhum pedido é criado ou lido: não há o que autorizar
+      return redirect_to(cart_path, alert: t(".not_configured"))
+    end
+
     order = Order.place(current_cart, current_user)
     authorize order
     return redirect_to(cart_path, alert: order.errors.full_messages.to_sentence) if order.errors.any?
-    return redirect_to(cart_path, alert: t(".not_configured")) unless StripeCheckout.configured?
 
     redirect_to start_payment(order), allow_other_host: true, status: :see_other
   rescue Stripe::StripeError, StripeCheckout::UnexpectedResponse => e
