@@ -1,8 +1,8 @@
 # Configuração do Stripe (pagamentos em modo de TESTE).
 #
 # As chaves vêm só de variáveis de ambiente (.env em desenvolvimento), nunca do código:
-# - STRIPE_SECRET_KEY: a chave da API. Use uma chave RESTRITA de teste (rk_test_...) com só a
-#   permissão "Checkout Sessions: Write".
+# - STRIPE_SECRET_KEY: a chave da API. Use uma chave RESTRITA de teste (rk_test_...) com só as
+#   permissões "Checkout Sessions: Write" e "Refunds: Write" (estorno quando falta estoque).
 # - STRIPE_WEBHOOK_SECRET: o segredo que confere a assinatura dos webhooks (whsec_...). Em
 #   desenvolvimento, ele aparece quando você roda "stripe listen".
 stripe = Rails.configuration.x.stripe

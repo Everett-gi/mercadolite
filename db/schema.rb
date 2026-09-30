@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_29_120002) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_30_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "unaccent"
@@ -96,12 +96,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_120002) do
     t.datetime "canceled_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "refunded_at"
+    t.string "stripe_refund_id"
     t.index ["stripe_checkout_session_id"], name: "index_orders_on_stripe_checkout_session_id", unique: true
     t.index ["stripe_payment_intent_id"], name: "index_orders_on_stripe_payment_intent_id", unique: true
+    t.index ["stripe_refund_id"], name: "index_orders_on_stripe_refund_id", unique: true
     t.index ["user_id"], name: "index_orders_on_user_id"
-    t.check_constraint "(status::text <> ALL (ARRAY['paid'::character varying, 'shipped'::character varying]::text[])) OR paid_at IS NOT NULL", name: "orders_paid_has_date"
+    t.check_constraint "(status::text <> ALL (ARRAY['paid'::character varying, 'shipped'::character varying, 'refunding'::character varying, 'refunded'::character varying]::text[])) OR paid_at IS NOT NULL", name: "orders_paid_has_date"
     t.check_constraint "currency::text = 'brl'::text", name: "orders_currency_brl"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'paid'::character varying, 'shipped'::character varying, 'canceled'::character varying]::text[])", name: "orders_status_valid"
+    t.check_constraint "status::text <> 'refunded'::text OR refunded_at IS NOT NULL AND stripe_refund_id IS NOT NULL", name: "orders_refunded_has_refund"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'paid'::character varying, 'shipped'::character varying, 'canceled'::character varying, 'refunding'::character varying, 'refunded'::character varying]::text[])", name: "orders_status_valid"
     t.check_constraint "total_cents > 0", name: "orders_total_positive"
   end
 

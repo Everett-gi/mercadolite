@@ -4,7 +4,9 @@ module OrdersHelper
     "pending" => "bg-amber-100 text-amber-800",
     "paid" => "bg-emerald-100 text-emerald-800",
     "shipped" => "bg-sky-100 text-sky-800",
-    "canceled" => "bg-stone-200 text-stone-700"
+    "canceled" => "bg-stone-200 text-stone-700",
+    "refunding" => "bg-orange-100 text-orange-800",
+    "refunded" => "bg-violet-100 text-violet-800"
   }.freeze
 
   # O status do pedido como uma etiqueta colorida, em português.

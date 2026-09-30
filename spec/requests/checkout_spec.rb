@@ -177,6 +177,18 @@ RSpec.describe "Checkout", type: :request do
       expect(order.reload).to be_paid
     end
 
+    it "estoque esgotado antes da confirmação: o comprador vê o aviso de estorno" do
+      log_in(user)
+      stub_session_retrieve
+      order.items.first.product.inventory.update!(quantity: 0)
+
+      get success_checkout_path(session_id:)
+      follow_redirect!
+
+      expect(order.reload).to be_refunding
+      expect(response.body).to include("Estorno em andamento", "Estamos devolvendo o valor ao seu cartão.")
+    end
+
     it "não confirma se o Stripe diz que ainda não foi pago" do
       log_in(user)
       stub_session_retrieve(payment_status: "unpaid")

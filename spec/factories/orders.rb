@@ -21,6 +21,13 @@ FactoryBot.define do
     trait :paid do
       status { "paid" }
       paid_at { Time.current }
+      sequence(:stripe_payment_intent_id) { |n| "pi_test_#{n}" }
+    end
+
+    # Pago, mas sem estoque: aguardando o estorno.
+    trait :refunding do
+      paid
+      status { "refunding" }
     end
   end
 end

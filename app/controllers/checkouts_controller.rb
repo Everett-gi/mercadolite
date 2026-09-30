@@ -32,7 +32,7 @@ class CheckoutsController < ApplicationController
   rescue Stripe::StripeError, StripeCheckout::UnexpectedResponse => e
     # O pedido fica cancelado (nunca foi para pagamento), e a falha vai para o log sem dado
     # pessoal: só a classe do erro e o id do pedido.
-    order&.update_columns(status: "canceled", canceled_at: Time.current) if order&.persisted?
+    order.cancel_unstarted! if order&.persisted?
     Rails.logger.error("[checkout] falha ao criar a sessão do pedido #{order&.id}: #{e.class}")
     redirect_to cart_path, alert: t(".unavailable")
   end

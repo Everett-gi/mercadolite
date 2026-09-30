@@ -67,7 +67,13 @@ RSpec.describe Order do
       end
     end
 
-    it "é idempotente: a segunda confirmação não muda nada" do
+    it "dá baixa no estoque junto com o pagamento" do
+      order.confirm_payment!(session)
+
+      expect(mug.inventory.reload.quantity).to eq(10 - 2)
+    end
+
+    it "é idempotente: a segunda confirmação não muda nada (nem baixa o estoque de novo)" do
       order.confirm_payment!(session)
       paid_at = order.reload.paid_at
 
@@ -75,6 +81,60 @@ RSpec.describe Order do
         expect(order.confirm_payment!(session)).to eq(:already_processed)
       end
       expect(order.reload.paid_at).to eq(paid_at)
+      expect(mug.inventory.reload.quantity).to eq(10 - 2)
+    end
+
+    context "quando o estoque acabou antes da confirmação" do
+      include ActiveJob::TestHelper
+
+      before { mug.inventory.update!(quantity: 1) } # o pedido tem 2 unidades
+
+      it "não dá baixa, marca o pedido para estorno e pede o estorno" do
+        expect { expect(order.confirm_payment!(session)).to eq(:out_of_stock) }
+          .to have_enqueued_job(RefundOrderJob).with(order)
+
+        expect(order.reload).to have_attributes(status: "refunding", stripe_payment_intent_id: "pi_test_#{order.id}")
+        expect(order.paid_at).to be_present
+        expect(mug.inventory.reload.quantity).to eq(1)
+      end
+
+      # O estorno só é pedido depois do COMMIT: se a transação for desfeita, o pedido volta a
+      # "pending" e não há o que estornar.
+      it "não pede o estorno se a transação for desfeita" do
+        session # cria o pedido ANTES da transação que será desfeita
+
+        expect {
+          described_class.transaction do
+            order.confirm_payment!(session)
+            raise ActiveRecord::Rollback
+          end
+        }.not_to have_enqueued_job(RefundOrderJob)
+
+        expect(order.reload).to be_pending
+      end
+
+      # Tudo ou nada também dentro da confirmação (que roda dentro do with_lock do pedido): faltou
+      # estoque de UM produto, nenhum é baixado. O que falta é o ÚLTIMO na ordem da trava
+      # (maior product_id): quando ele é conferido, o primeiro já poderia ter sido baixado.
+      it "pedido com dois produtos e estoque só do primeiro: não baixa nenhum" do
+        mug.inventory.update!(quantity: 10)
+        two = described_class.place(cart_with([ mug, 2 ], [ teapot, 1 ]), user)
+        two.update!(stripe_checkout_session_id: "cs_test_dois")
+        teapot.inventory.update!(quantity: 0) # outro comprador levou o último bule
+        expect(mug.id).to be < teapot.id
+
+        expect(two.confirm_payment!(Stripe::Checkout::Session.construct_from(stripe_session_payload(two))))
+          .to eq(:out_of_stock)
+        expect([ mug.inventory.reload.quantity, teapot.inventory.reload.quantity ]).to eq([ 10, 0 ])
+      end
+
+      it "deixa o carrinho como está" do
+        cart = cart_with([ mug, 1 ])
+
+        order.confirm_payment!(session)
+
+        expect(cart.items.reload.map(&:product)).to eq([ mug ])
+      end
     end
 
     {
@@ -131,12 +191,95 @@ RSpec.describe Order do
     end
   end
 
+  describe "#apply_checkout_session!" do
+    let(:order) { create(:order, user:, product: mug) }
+
+    it "sessão paga: confirma o pagamento" do
+      paid = Stripe::Checkout::Session.construct_from(stripe_session_payload(order, status: "complete"))
+
+      expect(order.apply_checkout_session!(paid)).to eq(:paid)
+    end
+
+    it "sessão expirada: cancela o pedido" do
+      expired = Stripe::Checkout::Session.construct_from(stripe_session_payload(order, status: "expired", payment_status: "unpaid"))
+
+      expect(order.apply_checkout_session!(expired)).to eq(:canceled)
+    end
+
+    it "sessão ainda aberta: não muda nada" do
+      open = Stripe::Checkout::Session.construct_from(stripe_session_payload(order, status: "open", payment_status: "unpaid"))
+
+      expect(order.apply_checkout_session!(open)).to eq(:still_open)
+      expect(order.reload).to be_pending
+    end
+  end
+
+  describe "#cancel_unstarted!" do
+    it "cancela o pedido que nunca chegou ao Stripe" do
+      order = create(:order, user:, stripe_checkout_session_id: nil)
+
+      expect(order.cancel_unstarted!).to eq(:canceled)
+      expect(order.reload).to be_canceled
+    end
+
+    # Com sessão criada, só o Stripe sabe se foi paga: quem decide é a consulta.
+    it "não cancela pedido que já tem sessão no Stripe" do
+      order = create(:order, user:)
+
+      expect(order.cancel_unstarted!).to eq(:already_processed)
+      expect(order.reload).to be_pending
+    end
+  end
+
+  describe "#record_refund!" do
+    let(:order) { create(:order, :refunding, user:) }
+
+    def refund(status)
+      Stripe::Refund.construct_from(id: "re_test_1", object: "refund", status:)
+    end
+
+    it "marca como estornado, com a data e o id do estorno, uma vez só" do
+      freeze_time do
+        expect(order.record_refund!(refund("succeeded"))).to eq(:refunded)
+
+        expect(order.reload).to have_attributes(status: "refunded", refunded_at: Time.current, stripe_refund_id: "re_test_1")
+      end
+      expect(order.record_refund!(refund("succeeded"))).to eq(:already_processed)
+    end
+
+    it "aceita estorno ainda a caminho do cartão (pending)" do
+      expect(order.record_refund!(refund("pending"))).to eq(:refunded)
+    end
+
+    it "estorno que o Stripe não fez: o pedido continua em estorno" do
+      expect(order.record_refund!(refund("failed"))).to eq(:refund_not_accepted)
+      expect(order.reload).to be_refunding
+    end
+
+    it "não mexe em pedido que não está em estorno" do
+      paid = create(:order, :paid, user:)
+
+      expect(paid.record_refund!(refund("succeeded"))).to eq(:already_processed)
+      expect(paid.reload).to be_paid
+    end
+  end
+
   describe "restrições no banco" do
     let(:order) { create(:order, user:) }
 
     it "recusa status fora da lista" do
-      expect { order.update_column(:status, "refunded") }
+      expect { order.update_column(:status, "delivered") }
         .to raise_error(ActiveRecord::StatementInvalid, /orders_status_valid/)
+    end
+
+    it "recusa pedido em estorno sem data de pagamento" do
+      expect { order.update_column(:status, "refunding") }
+        .to raise_error(ActiveRecord::StatementInvalid, /orders_paid_has_date/)
+    end
+
+    it "recusa pedido estornado sem o id do estorno" do
+      expect { order.update_columns(status: "refunded", paid_at: Time.current, refunded_at: Time.current) }
+        .to raise_error(ActiveRecord::StatementInvalid, /orders_refunded_has_refund/)
     end
 
     it "recusa pedido pago sem data de pagamento" do

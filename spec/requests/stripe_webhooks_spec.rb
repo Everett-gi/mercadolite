@@ -94,6 +94,23 @@ RSpec.describe "Webhooks do Stripe", type: :request do
     ActionController::Base.logger = original
   end
 
+  it "pagamento confirmado dá baixa no estoque" do
+    product = order.items.first.product
+
+    expect { post_stripe_webhook(completed) }.to change { product.inventory.reload.quantity }.by(-order.items.first.quantity)
+  end
+
+  it "pagamento sem estoque: responde 200, marca para estorno e registra um aviso" do
+    order.items.first.product.inventory.update!(quantity: 0)
+    allow(Rails.logger).to receive(:warn).and_call_original
+
+    post_stripe_webhook(completed)
+
+    expect(response).to have_http_status(:ok)
+    expect(order.reload).to be_refunding
+    expect(Rails.logger).to have_received(:warn).with(/out_of_stock/)
+  end
+
   it "sessão expirada cancela o pedido" do
     expired = stripe_event_json(type: "checkout.session.expired", object: stripe_session_payload(order, status: "expired"))
 

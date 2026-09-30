@@ -60,6 +60,8 @@ pt-BR:
         paid: Pago
         shipped: Enviado
         canceled: Cancelado
+        refunding: Estorno em andamento
+        refunded: Estornado
       order_item:
         product_name: Produto
         unit_price_cents: Preço

@@ -44,15 +44,16 @@ class StripeCheckout
     url
   end
 
-  # Consulta a sessão do pedido na API e aplica o resultado (pago, ou ainda pendente). Usado
-  # na página de retorno, para o comprador não esperar o webhook. É a mesma confirmação
-  # idempotente do webhook: o que chegar primeiro vale, o segundo não muda nada.
+  # Consulta a sessão do pedido na API e aplica o resultado (paga, expirada ou ainda aberta).
+  # Usado na página de retorno, para o comprador não esperar o webhook, e na conciliação
+  # (ReconcileOrdersJob). É a mesma confirmação idempotente do webhook: o que chegar primeiro
+  # vale, o segundo não muda nada.
   #
-  # @param order [Order]
-  # @return [Symbol] o resultado de Order#confirm_payment!
+  # @param order [Order] com a sessão de pagamento já criada
+  # @return [Symbol] o resultado de Order#apply_checkout_session!
   def sync(order)
     session = @client.v1.checkout.sessions.retrieve(order.stripe_checkout_session_id)
-    order.confirm_payment!(session)
+    order.apply_checkout_session!(session)
   end
 
   private

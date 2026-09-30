@@ -17,6 +17,17 @@
     <div class="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" role="status">
       Pagamento confirmado em <%= l(@order.paid_at, format: :long) %>. Obrigado pela compra!
     </div>
+  <% elsif @order.refunding? %>
+    <div class="rounded-md border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800" role="status">
+      O estoque de um dos produtos acabou antes da confirmação do seu pagamento, e o pedido não
+      pôde ser atendido. Estamos devolvendo o valor ao seu cartão.
+    </div>
+  <% elsif @order.refunded? %>
+    <div class="rounded-md border border-violet-200 bg-violet-50 p-3 text-sm text-violet-800" role="status">
+      O estoque de um dos produtos acabou antes da confirmação do seu pagamento. O valor foi
+      estornado em <%= l(@order.refunded_at, format: :long) %> e volta ao seu cartão conforme o
+      prazo do banco emissor.
+    </div>
   <% elsif @order.canceled? %>
     <div class="rounded-md border border-stone-200 bg-stone-100 p-3 text-sm text-stone-700" role="status">
       O pagamento não foi concluído e o pedido foi cancelado. Os produtos continuam no seu carrinho.

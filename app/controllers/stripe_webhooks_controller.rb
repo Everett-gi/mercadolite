@@ -33,8 +33,14 @@ class StripeWebhooksController < ActionController::API
   private
 
   # Registra o que aconteceu, sem o conteúdo do evento (que tem o e-mail do comprador).
+  # Divergência de valor/sessão é erro (alguém precisa investigar); pagamento sem estoque é
+  # aviso (o estorno é automático, mas é bom saber que aconteceu).
   def log(event, result)
-    level = result.in?(%i[amount_mismatch currency_mismatch session_mismatch]) ? :error : :info
+    level = case result
+    when :amount_mismatch, :currency_mismatch, :session_mismatch then :error
+    when :out_of_stock then :warn
+    else :info
+    end
     Rails.logger.public_send(level, "[stripe] #{event.type} #{event.id}: #{result}")
   end
 end

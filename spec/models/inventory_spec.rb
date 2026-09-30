@@ -27,4 +27,40 @@ RSpec.describe Inventory do
 
     expect { second.save!(validate: false) }.to raise_error(ActiveRecord::RecordNotUnique)
   end
+
+  describe ".withdraw" do
+    let(:mug) { create(:product, stock: 5) }
+    let(:pen) { create(:product, stock: 1) }
+
+    it "dá baixa em todos os produtos de uma vez" do
+      expect(described_class.withdraw(mug.id => 2, pen.id => 1)).to be(true)
+
+      expect([ mug.inventory.reload.quantity, pen.inventory.reload.quantity ]).to eq([ 3, 0 ])
+    end
+
+    it "tudo ou nada: se falta estoque de um produto, não baixa nenhum" do
+      expect(described_class.withdraw(mug.id => 2, pen.id => 2)).to be(false)
+
+      expect([ mug.inventory.reload.quantity, pen.inventory.reload.quantity ]).to eq([ 5, 1 ])
+    end
+
+    it "recusa produto sem linha de estoque" do
+      mug.inventory.delete
+
+      expect(described_class.withdraw(mug.id => 1, pen.id => 1)).to be(false)
+      expect(pen.inventory.reload.quantity).to eq(1)
+    end
+
+    # A ordem da trava é o que impede deadlock entre duas compras dos mesmos produtos.
+    it "trava as linhas com FOR UPDATE, em ordem de product_id" do
+      ids = { pen.id => 1, mug.id => 1 }
+      sql = []
+      capture = ->(*, payload) { sql << payload[:sql] if payload[:sql].start_with?("SELECT \"inventories\"") }
+      ActiveSupport::Notifications.subscribed(capture, "sql.active_record") do
+        described_class.withdraw(ids)
+      end
+
+      expect(sql.first).to match(/ORDER BY "inventories"\."product_id" ASC .*FOR UPDATE/)
+    end
+  end
 end
