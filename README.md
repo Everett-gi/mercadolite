@@ -2,7 +2,7 @@
 
 Marketplace com catálogo, carrinho, checkout Stripe (modo teste), pedidos e estoque — com o pagamento tratado como ponto crítico de segurança.
 
-> 🚧 **Em construção — fases 1, 2 e 3 concluídas (catálogo, carrinho, login e checkout com Stripe).** Parte do portfólio
+> 🚧 **Em construção — fases 1 a 4 concluídas (catálogo, carrinho, login, checkout com Stripe, pedidos e estoque).** Parte do portfólio
 > [Projetos-e-ideias](https://github.com/Everett-gi/Projetos-e-ideias).
 
 ![Vitrine do MercadoLite](docs/tutorial/img/fase-1-vitrine-busca.png)
@@ -26,7 +26,11 @@ pedidos com status e controle de estoque.
   pagamento é confirmado por **webhook assinado**; "Meus pedidos" com autorização pelo
   **Pundit**.
 
-![Pedido pago depois do checkout no Stripe](docs/tutorial/img/fase-3b-pedido-pago.png)
+- **Fase 4:** baixa de estoque na confirmação do pagamento, sem vender a mesma unidade duas
+  vezes; se o estoque acabou entre o carrinho e o pagamento, o **estorno é automático**; e uma
+  **conciliação** a cada 15 minutos confere com o Stripe os pedidos que ficaram para trás.
+
+![Meus pedidos: estornado, pago, cancelado e pendentes](docs/tutorial/img/fase-4-meus-pedidos.png)
 
 ## Stack
 
@@ -40,7 +44,7 @@ bundler-audit.
 - ✅ **Vendor** · **Product** (vendedor, preço em centavos, até 5 imagens) · **Inventory** (1:1 com o produto)
 - ✅ **Cart** + **CartItem** (de 1 a 10 unidades por linha, sem coluna de preço; de visitante ou de uma conta)
 - ✅ **User** (e-mail confirmado, hash bcrypt da senha, data do aceite dos termos)
-- ✅ **Order** (status: pending|paid|shipped|canceled, total em centavos, sessão do Stripe) + **OrderItem** (nome e preço congelados na compra)
+- ✅ **Order** (status: pending|paid|shipped|canceled|refunding|refunded, total em centavos, sessão, pagamento e estorno do Stripe) + **OrderItem** (nome e preço congelados na compra)
 - ✅ **StripeEvent** (eventos de webhook já processados: só o id e o tipo)
 
 ## Segurança
@@ -62,6 +66,7 @@ Resumo das medidas (detalhes no [`SECURITY.md`](SECURITY.md)):
 - **Webhooks do Stripe** com **assinatura HMAC verificada** (corpo cru, comparação em tempo constante, recusa de eventos com mais de 5 minutos contra *replay*, limite de 64 KB) e **idempotência** em duas camadas (índice único por evento + `SELECT ... FOR UPDATE`), testada com duas conexões concorrentes.
 - **Só chaves de teste** (a aplicação não sobe com chave de produção), de preferência a chave **restrita**; nos testes, nenhuma chamada de rede (WebMock).
 - Pedidos com **Pundit**: cada comprador vê só os seus (o de outra pessoa dá 404), com negação por padrão.
+- **Estoque sem venda dupla:** baixa no pagamento com `SELECT ... FOR UPDATE` em ordem fixa (sem atualização perdida nem deadlock), testada com duas conexões disputando a última unidade; faltou estoque → **estorno automático** e idempotente; a **conciliação** decide pelo que o Stripe responde, nunca por tempo.
 - **LGPD:** coleta mínima, aceite dos termos, exclusão da conta pelo próprio usuário (os pedidos ficam, sem dono), limpeza de contas não confirmadas e dados do comprador fora dos logs (inclusive os que vêm nos webhooks).
 
 ## Rodando localmente
@@ -97,7 +102,7 @@ bin/ci                # tudo de uma vez
 1. ✅ Catálogo (produtos + imagens + busca/filtros)
 2. ✅ Carrinho (sessão, CSRF, anti-IDOR, rate limit, Turbo Streams)
 3. ✅ Login do comprador (3a: Devise, e-mail confirmado, LGPD) + checkout com Stripe em modo teste (3b: Pundit, webhook assinado e idempotente)
-4. ⬜ Pedidos + estoque (baixa no pagamento confirmado)
+4. ✅ Pedidos + estoque (baixa no pagamento confirmado, estorno automático, conciliação)
 5. ⬜ Painel do vendedor
 6. ⬜ Deploy (Docker Compose + Caddy, ver [`docs/DEPLOY.md`](docs/DEPLOY.md))
 
@@ -113,3 +118,4 @@ Cada fase concluída ganha uma lição em [`docs/tutorial/`](docs/tutorial/):
 | [Fase 2 — Carrinho](docs/tutorial/fase-2-carrinho.md) | cookies e sessão (AES-256-GCM), CSRF com ataque real, IDOR, rate limiting, Turbo Streams, concerns, jobs com Solid Queue |
 | [Fase 3a — Login](docs/tutorial/fase-3a-login.md) | hash de senha (bcrypt, sal, custo, 72 bytes), Devise e Warden, enumeração e ataques de tempo, revogação de sessão, rate limit por e-mail, e-mail com Mailpit, token no log, LGPD |
 | [Fase 3b — Checkout](docs/tutorial/fase-3b-checkout.md) | pedido com preço congelado, Pundit, chaves do Stripe, Stripe Checkout, chave de idempotência, webhooks e HMAC à mão, *replay*, idempotência com trava de linha e concorrência nos testes, CSP e Turbo, WebMock, pagamento real na sandbox |
+| [Fase 4 — Estoque](docs/tutorial/fase-4-estoque.md) | TOCTOU e atualização perdida medidas, `FOR UPDATE` em várias linhas, deadlock e ordem das travas, `UPDATE` condicional, rollback aninhado, estorno idempotente, jobs com novas tentativas e depois do COMMIT, conciliação e *head-of-line blocking*, estorno real na sandbox |

@@ -55,13 +55,15 @@ mercado-gil.duckdns.org   { reverse_proxy mercadolite-app:3000 }
   O `db:prepare` cria os três.
 - Defina `SOLID_QUEUE_IN_PUMA=true` para o Puma rodar os workers do Solid Queue. Sem eles,
   os jobs agendados (a limpeza diária de carrinhos abandonados e de contas nunca
-  confirmadas) e o envio dos e-mails não acontecem.
+  confirmadas, e a conciliação de pedidos a cada 15 minutos), o envio dos e-mails e os
+  estornos automáticos não acontecem.
 - **E-mail** (confirmação de conta, redefinição de senha): defina `APP_HOST` (o domínio
   público, usado nos links), `MAILER_FROM` e as variáveis `SMTP_*` de um provedor de e-mail
   transacional. O remetente precisa ser de um domínio autorizado no provedor (registros SPF e
   DKIM no DNS), senão as mensagens caem no spam. A conexão exige TLS (`enable_starttls`).
 - **Stripe** (sempre em modo de teste: a aplicação não sobe com chave `_live_`): defina
-  `STRIPE_SECRET_KEY` com uma chave **restrita** de teste e crie, no painel do Stripe (na
+  `STRIPE_SECRET_KEY` com uma chave **restrita** de teste (permissões `Checkout Sessions` e
+  `Refunds`, de gravação) e crie, no painel do Stripe (na
   sandbox), um *endpoint* de webhook para `https://<APP_HOST>/webhooks/stripe` com os eventos
   `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
   `checkout.session.expired` e `checkout.session.async_payment_failed`. O segredo de
@@ -85,4 +87,6 @@ mercado-gil.duckdns.org   { reverse_proxy mercadolite-app:3000 }
 - [ ] Backup do banco agendado (cron) e, idealmente, enviado para storage externo
 - [ ] E-mail de confirmação chegando na caixa de entrada (não no spam) com link `https://`
 - [ ] Compra de teste (cartão `4242 4242 4242 4242`) terminando em "Pago", com o webhook
-      respondido com 200 no painel do Stripe
+      respondido com 200 no painel do Stripe e o estoque do produto baixado
+- [ ] Estorno de teste: com a página do Stripe aberta, zerar o estoque do produto e pagar; o
+      pedido termina em "Estornado" e o estorno aparece no painel do Stripe

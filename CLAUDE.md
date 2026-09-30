@@ -5,7 +5,7 @@
 > [Everett-gi/Projetos-e-ideias](https://github.com/Everett-gi/Projetos-e-ideias). Referências de qualidade:
 > [DocSage](https://github.com/Everett-gi/docsage) e [PwnCheck](https://github.com/Everett-gi/pwncheck)
 > (estrutura, testes, CI e as lições do modo tutorial).
-> **Status:** 🚧 em construção — fases 1 (catálogo), 2 (carrinho) e 3 (3a login + 3b checkout Stripe) concluídas. Próxima: fase 4 (pedidos + estoque).
+> **Status:** 🚧 em construção — fases 1 (catálogo), 2 (carrinho), 3 (3a login + 3b checkout Stripe) e 4 (pedidos + estoque) concluídas. Próxima: fase 5 (painel do vendedor).
 
 ## Modo tutorial
 
@@ -54,7 +54,7 @@ Stripe CLI (`stripe listen`, em desenvolvimento).
 
 - **Vendor** · **Product** (vendor, preço, imagens) · **Inventory** (product, quantidade)
 - **User** (Devise) · **Cart** (de visitante ou de um User) + **CartItem**
-- **Order** (status: pending|paid|shipped|canceled) + **OrderItem** (nome e preço congelados)
+- **Order** (status: pending|paid|shipped|canceled|refunding|refunded) + **OrderItem** (nome e preço congelados)
 - **StripeEvent** (eventos de webhook já processados: só `event_id` único e tipo)
 
 ## Funcionalidades principais
@@ -80,7 +80,8 @@ pagamento; autorização de pedidos (comprador vê os seus); **validação de pr
      — lição: `docs/tutorial/fase-3a-login.md`
    - ✅ **3b — Checkout** (Order + Pundit, Stripe Checkout com chave restrita, webhook com
      assinatura verificada e idempotente) — lição: `docs/tutorial/fase-3b-checkout.md`
-4. Pedidos + estoque (baixa no pagamento confirmado, com `SELECT ... FOR UPDATE`)
+4. ✅ Pedidos + estoque (baixa no pagamento confirmado, com `SELECT ... FOR UPDATE`; estorno
+   automático; conciliação) — lição: `docs/tutorial/fase-4-estoque.md`
 5. Painel do vendedor (login de vendedor, CRUD de produtos, upload validado pelo conteúdo)
 6. Deploy (ver `docs/DEPLOY.md`)
 
@@ -123,11 +124,23 @@ pagamento; autorização de pedidos (comprador vê os seus); **validação de pr
   (índice único) na MESMA transação do efeito. Todo evento verificado recebe 200 (senão o
   Stripe reenvia por dias); assinatura inválida → 400; corpo > 64 KB → 413.
 - **Chaves do Stripe (3b):** só de teste (`StripeKeys.test_key?`; o boot falha com `_live_`),
-  de preferência restrita (`Checkout Sessions: Write`). Nos testes, valores fixos no
+  de preferência restrita (`Checkout Sessions: Write` e, desde a fase 4, `Refunds: Write`). Nos testes, valores fixos no
   initializer e WebMock bloqueando a rede. Tempo máximo: 5 s para conectar, 20 s para ler.
 - **Pundit (3b):** negação por padrão (`ApplicationPolicy`), `policy_scope` + `authorize` (as duas
   camadas, de propósito), `verify_authorized`/`verify_policy_scoped`, e
   `Pundit::NotAuthorizedError` → 404 (não revela que o registro existe).
+- **Estoque (4):** baixa só no pagamento confirmado (não há reserva), dentro do `with_lock` do
+  pedido: `Inventory.withdraw` trava as linhas com `FOR UPDATE` em ordem de `product_id`
+  (contra deadlock), confere TUDO antes de baixar (tudo ou nada; nada de
+  `ActiveRecord::Rollback` em transação aninhada) e devolve `false` se faltar.
+- **Estorno (4):** pago sem estoque → `refunding`; `RefundOrderJob` (enfileirado com
+  `after_all_transactions_commit`) chama `StripeRefunds#refund_in_full` (sem `amount`, chave
+  `mercadolite-order-<id>-refund`), com `retry_on` só para erros passageiros (5 tentativas);
+  `refunded` só se o Stripe devolve `pending`/`succeeded`. Estorno inteiro, nunca parcial.
+- **Conciliação (4):** `ReconcileOrdersJob` a cada 15 min (produção): pendentes de 1 h a 3 dias,
+  do mais novo ao mais antigo, decididos pelo Stripe (`StripeCheckout#sync` →
+  `Order#apply_checkout_session!`), nunca por tempo; sem sessão → `cancel_unstarted!`;
+  `refunding` há mais de 1 h → estorno de novo.
 - **LGPD (3b):** excluir a conta deixa os pedidos sem dono (`on_delete: :nullify`); ao Stripe vão
   só o e-mail e os itens; `stripe_events` guarda só id e tipo; a chave `data` (o conteúdo dos
   eventos) é filtrada do log.
@@ -163,7 +176,10 @@ pagamento; autorização de pedidos (comprador vê os seus); **validação de pr
 | `app/views/users/` | Telas e e-mails do Devise em português (`config.scoped_views = true`). |
 | `app/controllers/pages_controller.rb`, `app/views/pages/` | Termos de Uso (`/terms`) e Política de Privacidade (`/privacy`). |
 | `app/jobs/purge_unconfirmed_users_job.rb` | Apaga contas não confirmadas há mais de 7 dias (4h10 de Brasília). |
-| `app/models/order.rb`, `order_item.rb` | Pedido: `Order.place` (do carrinho, preço do banco), `confirm_payment!` e `cancel_checkout!` (idempotentes, com `with_lock`). |
+| `app/models/order.rb`, `order_item.rb` | Pedido: `Order.place` (do carrinho, preço do banco), `confirm_payment!` (baixa ou estorno), `apply_checkout_session!`, `cancel_checkout!`, `cancel_unstarted!` e `record_refund!` (idempotentes, com `with_lock`). |
+| `app/models/inventory.rb` | `Inventory.withdraw(product_id => qtd)`: baixa tudo ou nada, com `FOR UPDATE` em ordem de `product_id`. |
+| `app/models/stripe_refunds.rb` | PORO da API de estornos: `refund_in_full` (chave de idempotência por pedido). |
+| `app/jobs/refund_order_job.rb`, `reconcile_orders_job.rb` | Estorno com novas tentativas; conciliação a cada 15 min (`config/recurring.yml`). |
 | `app/models/stripe_checkout.rb` | PORO da API do Stripe: `start` (cria a sessão, confere o host) e `sync` (consulta e confirma). |
 | `app/models/stripe_event.rb` | `StripeEvent.process(event)`: um evento uma vez só, na mesma transação do efeito. |
 | `lib/stripe_keys.rb` | **Função pura**: `test_key?` (`sk`/`rk` + letras + `_test_`) e `webhook_secret?` (`whsec_`). |
@@ -301,6 +317,30 @@ bin/ci                               # tudo o que o CI roda
 - **Os rate limits valem para você no navegador** (5 checkouts/min, 5 logins/15 min por
   e-mail): reiniciar o `bin/dev` zera os contadores (ficam na memória).
 
+### Descobertas na fase 4
+
+- **Atualização perdida não viola `CHECK`:** sem `FOR UPDATE`, duas vendas da última unidade
+  gravam `0` duas vezes (conferido: `[:vendeu, :vendeu, 0]`).
+- **`ActiveRecord::Rollback` dentro de transação ANINHADA é engolido** (o `transaction` interno
+  só se junta ao de fora): o que já foi alterado fica. Use `transaction(requires_new: true)`
+  (savepoint) ou confira tudo antes de alterar.
+- **Teste de "tudo ou nada" com vários itens:** o item que falta precisa ser o ÚLTIMO na
+  ordem de processamento; senão, o teste passa até com o código errado.
+- **`let` preguiçoso referenciado pela primeira vez dentro de uma transação desfeita** some
+  com ela: crie o registro antes (`session` / `let!`).
+- **Em produção, a fila do Solid Queue fica em outro banco (`queue`)**, fora da transação:
+  enfileire jobs que dependem do COMMIT com `ActiveRecord.after_all_transactions_commit`.
+- **`retry_on ... attempts: 5`** conta a primeira execução: 5 chamadas; `:polynomially_longer`
+  espera `n⁴ + 2` s (3, 18, 83, 258) mais *jitter*.
+- **`perform_enqueued_jobs` no RSpec, com job que termina em erro,** levanta `NameError`
+  (`tagged_logger`), e não o erro do job: para testar esgotamento, conte as chamadas.
+- **Conciliação por "mais antigos primeiro" trava** (*head-of-line blocking*) com pedidos que
+  sempre dão erro (sessões de outra conta do Stripe): processe do mais novo e dê um prazo.
+- **Saída antecipada antes do `authorize`** exige `skip_authorization` (por causa do
+  `verify_authorized`).
+- **Nunca desfaça experimentos com `git checkout <arquivo>`** num arquivo com mudanças ainda não
+  commitadas: volta ao último commit e apaga o trabalho. Use cópias (`cp`).
+
 ## Como começar (feito na fase 1)
 
 O esqueleto foi gerado com `rails new . --database=postgresql --css=tailwind --skip-git
@@ -311,12 +351,13 @@ existem. Para rodar numa máquina nova, siga a Lição 00.
 
 **Stripe (desde a fase 3b):** o autor usa a sandbox "Área restrita de MercadoLite", sem ativar
 o modo de produção. Só chaves de **teste**, de preferência **restrita** (`rk_test_`, com
-`Checkout Sessions: Write`), e só no `.env` (nunca no chat nem no Git). Em desenvolvimento, os
-webhooks chegam pela Stripe CLI (`stripe listen`, que mostra o `whsec_`; instalação pelo `apt`
-na lição da fase 3b). **Para a fase 4:** a baixa de estoque entra na confirmação do pagamento
-(`Order#confirm_payment!`), na mesma transação, com `FOR UPDATE` na linha do estoque; e a
-conciliação de pedidos pendentes deve CONSULTAR o Stripe antes de cancelar (um webhook
-atrasado de um pedido pago encontraria o pedido já cancelado).
+`Checkout Sessions: Write` e `Refunds: Write`), e só no `.env` (nunca no chat nem no Git). Em
+desenvolvimento, os webhooks chegam pela Stripe CLI (`stripe listen`, que mostra o `whsec_`;
+instalação pelo `apt` na lição da fase 3b). Para verificações reais feitas pelo Claude, o
+autor autorizou criar sandboxes anônimas pela CLI (`stripe sandbox create --email`), com as
+chaves só no container e apagadas no fim. **Para a fase 5:** o vendedor é um papel novo
+(RBAC com Pundit), sempre com escopo por dono; o upload de imagens deve ser validado pelo
+conteúdo (o teste `pending` de `product_spec.rb` cobra isso); marcar `paid → shipped`.
 
 ## Base de segurança do portfólio (Definition of Done)
 
