@@ -56,7 +56,7 @@ gem "devise-i18n", "~> 1.16"
 gem "pundit", "~> 2.5"
 
 # Cliente oficial da API do Stripe (checkout e verificação da assinatura dos webhooks).
-gem "stripe", "~> 19.6"
+gem "stripe", "~> 20.0"
 
 group :development, :test do
   # Depurador (breakpoints com "debugger" no código).
