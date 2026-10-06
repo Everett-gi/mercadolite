@@ -11,7 +11,7 @@ gem "rails", "~> 8.1.4"
 # Pipeline de assets: serve CSS, JS e imagens com um "digest" no nome (cache eterno seguro).
 gem "propshaft"
 # Driver do PostgreSQL (extensão nativa em C, ligada à libpq).
-gem "pg", "~> 1.1"
+gem "pg", "~> 1.7"
 # Servidor web (HTTP) multi-thread que roda a aplicação.
 gem "puma", ">= 5.0"
 # JavaScript via "import maps": o navegador importa módulos ES direto, sem Node nem bundler.
