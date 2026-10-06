@@ -34,7 +34,7 @@ gem "solid_queue"
 gem "bootsnap", require: false
 
 # Variantes de imagem do Active Storage (miniaturas), usando a libvips.
-gem "image_processing", "~> 2.1"
+gem "image_processing", "~> 2.2"
 # A partir da image_processing 2.0, a ruby-vips virou dependência OPCIONAL: sem declará-la
 # aqui, ela some do bundle e as miniaturas quebram (só em produção, se não houver teste que
 # gere uma de verdade). O db/seeds.rb também a usa diretamente (require "vips").
