@@ -88,5 +88,5 @@ end
 group :test do
   # Intercepta as requisições HTTP dos testes: nenhum teste chama a API do Stripe de verdade
   # (o CI não tem chave nenhuma), e cada teste confere exatamente o que seria enviado.
-  gem "webmock", "~> 3.26"
+  gem "webmock", "~> 3.34"
 end
