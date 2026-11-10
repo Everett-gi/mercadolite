@@ -67,7 +67,7 @@ group :development, :test do
   gem "dotenv", "~> 3.2"
 
   # Testes: RSpec (o framework) e FactoryBot (fábricas de objetos para os testes).
-  gem "rspec-rails", "~> 8.0"
+  gem "rspec-rails", "~> 8.1"
   gem "factory_bot_rails", "~> 6.5"
 
   # Segurança: vulnerabilidades conhecidas nas gems (config em config/bundler-audit.yml).
